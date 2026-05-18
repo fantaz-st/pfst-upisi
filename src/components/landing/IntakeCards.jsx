@@ -15,7 +15,7 @@ export default function IntakeCards({ intakes }) {
   }
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={3} sx={{ marginTop: "3rem" }}>
       {intakes.map((intake) => (
         <Grid key={intake.id} size={{ xs: 12, sm: 6, md: 6 }}>
           <IntakeCard intake={intake} />

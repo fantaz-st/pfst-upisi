@@ -56,7 +56,8 @@ export default async function HomePage() {
           </Box>
 
           <Typography variant="h1" className={styles.heroTitle}>
-            Upisi na<br />
+            Upisi na
+            <br />
             <span className={styles.heroTitleAccent}>Pomorski fakultet</span>
           </Typography>
 
@@ -147,9 +148,7 @@ export default async function HomePage() {
           <Typography variant="h2" className={styles.sectionTitle}>
             Vrste studija
           </Typography>
-          <Typography className={styles.sectionSubtitle}>
-            Odaberite vrstu studija za koji se želite prijaviti i ispunite obrazac za upis.
-          </Typography>
+          <Typography className={styles.sectionSubtitle}>Odaberite vrstu studija za koji se želite prijaviti i ispunite obrazac za upis.</Typography>
           <IntakeCards intakes={intakes} />
         </Container>
       </Box>
@@ -186,9 +185,13 @@ export default async function HomePage() {
                 <div className={styles.contactTitle}>Trebate pomoć?</div>
                 <div className={styles.contactText}>
                   Kontaktirajte nas na{" "}
-                  <a href="mailto:upisi@pfst.hr" className={styles.contactLink}>upisi@pfst.hr</a>
-                  {" "}ili na{" "}
-                  <a href="tel:+38521380762" className={styles.contactLink}>+385 21 380 762</a>
+                  <a href="mailto:upisi@pfst.hr" className={styles.contactLink}>
+                    upisi@pfst.hr
+                  </a>{" "}
+                  ili na{" "}
+                  <a href="tel:+38521380762" className={styles.contactLink}>
+                    +385 21 380 762
+                  </a>
                 </div>
               </Box>
             </Box>

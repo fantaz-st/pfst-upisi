@@ -35,10 +35,11 @@ export default function ApplicationForm({ intake }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState({});
 
-  const config = applicationConfigs[intake.slug] ?? {
-    title: `Prijava za ${intake.title}`,
-    requiredDocuments: [],
-  };
+  const config = applicationConfigs[intake.study_level] ??
+    applicationConfigs[intake.slug] ?? {
+      title: `Prijava za ${intake.title}`,
+      requiredDocuments: [],
+    };
 
   const {
     control,
@@ -156,7 +157,7 @@ export default function ApplicationForm({ intake }) {
                 <FormControl fullWidth error={!!errors.program}>
                   <InputLabel>Odabir studija *</InputLabel>
                   <Select {...field} label="Odabir studija *">
-                    {studyPrograms[intake.slug]?.map((prog) => (
+                    {(studyPrograms[intake.study_level] || studyPrograms[intake.slug])?.map((prog) => (
                       <MenuItem key={prog.value} value={prog.value}>
                         {prog.label}
                       </MenuItem>

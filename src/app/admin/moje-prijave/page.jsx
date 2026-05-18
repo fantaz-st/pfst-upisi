@@ -10,8 +10,10 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
 import { applicationStatuses, getProgramShortCode } from "@/lib/applications/config";
 import ApplicationFilters from "@/components/admin/ApplicationFilters";
+import IntakeSelector from "@/components/admin/IntakeSelector";
 import styles from "../admin.module.css";
 
 export const metadata = { title: "Moje prijave — Admin" };
@@ -41,38 +43,41 @@ export default async function MyApplicationsPage({ searchParams }) {
     );
   }
 
+  // Dohvati sve intakes
+  const { data: intakes } = await supabase
+    .from("intakes")
+    .select("id, title, academic_year, slug, study_level, is_open")
+    .eq("is_visible", true)
+    .order("created_at", { ascending: false });
+
   const statusFilter = params?.status ?? "";
   const programFilter = params?.program ?? "";
+  const intakeFilter = params?.intake ?? "";
 
-  // Dohvati aplikacije zajedno s intake study_level
   let query = supabase
     .from("applications")
-    .select(`id, application_number, first_name, last_name, email, oib, status, created_at, program, study_type, intakes ( title, academic_year, slug, study_level )`)
+    .select(`id, application_number, first_name, last_name, email, oib, status, created_at, program, study_type, intakes ( id, title, academic_year, slug, study_level )`)
     .is("deleted_at", null)
+    .in("program", permissions)
     .order("created_at", { ascending: false });
 
   if (statusFilter) query = query.eq("status", statusFilter);
   if (programFilter) query = query.eq("program", programFilter);
+  if (intakeFilter) query = query.eq("intake_id", intakeFilter);
 
-  const { data: allApplications } = await query;
-
-  // Filtriraj prema permissions (program + study_level)
-  const applications = (allApplications || []).filter(app => {
-    return permissions.some(p => {
-      if (p.program !== app.program) return false;
-      if (p.study_level === "sve") return true;
-      return p.study_level === app.intakes?.study_level;
-    });
-  });
+  const { data: applications } = await query;
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.pageTitle}>Moje prijave</div>
-          <div className={styles.pageSubtitle}>{applications.length} ukupno prijava</div>
+          <div className={styles.pageSubtitle}>{applications?.length ?? 0} ukupno prijava</div>
         </div>
-        <ApplicationFilters />
+        <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+          <IntakeSelector intakes={intakes ?? []} selected={intakeFilter} />
+          <ApplicationFilters />
+        </Box>
       </div>
 
       <div className={styles.tableCard}>
@@ -94,7 +99,7 @@ export default async function MyApplicationsPage({ searchParams }) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {!applications.length ? (
+              {!applications?.length ? (
                 <TableRow>
                   <TableCell colSpan={11} align="center" sx={{ py: 6, color: "text.secondary" }}>Nema prijava.</TableCell>
                 </TableRow>

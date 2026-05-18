@@ -21,41 +21,44 @@ export async function isSuperAdmin() {
 export async function getAdminPermissions() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  if (!user) return { programs: [], intakes: [] };
 
   const role = await getCurrentAdminRole();
   if (role === "super_admin") return "all";
 
-  // Vrati program + study_level
-  const { data: permissions } = await supabase
+  // Dohvati programe
+  const { data: permData } = await supabase
     .from("admin_program_permissions")
-    .select("program, study_level")
+    .select("program")
     .eq("user_id", user.id);
 
-  return permissions || [];
+  // Dohvati intakes
+  const { data: intakeData } = await supabase
+    .from("intake_admins")
+    .select("intake_id, intakes ( id, title, academic_year, slug, study_level, is_open, is_visible )")
+    .eq("user_id", user.id);
+
+  return {
+    programs: permData?.map(p => p.program) || [],
+    intakes: intakeData?.map(d => d.intakes).filter(Boolean) || [],
+  };
 }
 
 export async function canAccessProgram(program) {
   const permissions = await getAdminPermissions();
   if (permissions === "all") return true;
-  return permissions.some((p) => p.program === program);
+  return permissions.programs.includes(program);
 }
 
-// Provjeri može li admin vidjeti prijavu za određeni intake (program + study_level)
-export async function canAccessApplication(program, intakeStudyLevel) {
+export async function canAccessIntake(intakeId) {
   const permissions = await getAdminPermissions();
   if (permissions === "all") return true;
-
-  return permissions.some((p) => {
-    if (p.program !== program) return false;
-    if (p.study_level === "sve") return true;
-    return p.study_level === intakeStudyLevel;
-  });
+  return permissions.intakes.some(i => i.id === intakeId);
 }
 
-// Vrati filtere za query — array of { program, study_level }
-export async function getPermissionFilters() {
+export async function canAccessApplication(program, intakeId) {
   const permissions = await getAdminPermissions();
-  if (permissions === "all") return "all";
-  return permissions;
+  if (permissions === "all") return true;
+  return permissions.programs.includes(program) &&
+    permissions.intakes.some(i => i.id === intakeId);
 }

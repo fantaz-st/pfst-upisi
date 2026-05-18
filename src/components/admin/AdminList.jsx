@@ -10,6 +10,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -18,15 +19,23 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import { deleteAdmin } from "@/lib/admin/actions";
+import EditAdminModal from "./EditAdminModal";
 import styles from "@/app/admin/admin.module.css";
 
 export default function AdminList({ admins }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const handleEditClick = (admin) => {
+    setSelectedAdmin(admin);
+    setEditOpen(true);
+  };
 
   const handleDeleteClick = (admin) => {
     setSelectedAdmin(admin);
@@ -83,10 +92,27 @@ export default function AdminList({ admins }) {
                       <span className={styles.secondaryText}>{new Date(admin.created_at).toLocaleDateString("hr-HR")}</span>
                     </TableCell>
                     <TableCell align="right">
-                      <Button variant="outlined" color="error" size="small" startIcon={<DeleteIcon />} onClick={() => handleDeleteClick(admin)}
-                        sx={{ borderRadius: "100px", fontSize: "0.75rem" }}>
-                        Obriši
-                      </Button>
+                      <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={() => handleEditClick(admin)}
+                          sx={{ borderRadius: "100px", fontSize: "0.75rem" }}
+                        >
+                          Uredi
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => handleDeleteClick(admin)}
+                          sx={{ borderRadius: "100px", fontSize: "0.75rem" }}
+                        >
+                          Obriši
+                        </Button>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))
@@ -96,6 +122,16 @@ export default function AdminList({ admins }) {
         </TableContainer>
       </div>
 
+      {/* Edit Modal */}
+      {selectedAdmin && (
+        <EditAdminModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          admin={selectedAdmin}
+        />
+      )}
+
+      {/* Delete Dialog */}
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, color: "error.main" }}>Brisanje administratora</DialogTitle>
         <DialogContent>
