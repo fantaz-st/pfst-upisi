@@ -1,0 +1,211 @@
+/* Print-optimized styles for application form */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  font-size: 11pt;
+  line-height: 1.4;
+  color: #000;
+  background: #fff;
+}
+
+.print-container {
+  max-width: 210mm; /* A4 width */
+  margin: 0 auto;
+  padding: 15mm;
+  background: white;
+}
+
+/* Header */
+.print-header {
+  text-align: center;
+  margin-bottom: 20mm;
+  padding-bottom: 5mm;
+  border-bottom: 2px solid #0D2B52;
+}
+
+.logo-section h1 {
+  font-size: 18pt;
+  font-weight: 700;
+  color: #0D2B52;
+  margin-bottom: 4pt;
+  letter-spacing: 0.5pt;
+}
+
+.logo-section p {
+  font-size: 10pt;
+  color: #666;
+  margin-bottom: 8pt;
+}
+
+.doc-type h2 {
+  font-size: 20pt;
+  font-weight: 700;
+  color: #1B6CA8;
+  margin-top: 6pt;
+  letter-spacing: 1pt;
+}
+
+/* Application Info Bar */
+.app-info-bar {
+  display: flex;
+  justify-content: space-between;
+  background: #F5F7FA;
+  padding: 8pt 12pt;
+  margin-bottom: 8mm;
+  border-radius: 4pt;
+  border: 1px solid #E0E0E0;
+}
+
+.info-item {
+  display: flex;
+  gap: 6pt;
+  align-items: center;
+}
+
+.info-item .label {
+  font-size: 9pt;
+  color: #666;
+}
+
+.info-item .value {
+  font-size: 10pt;
+  font-weight: 600;
+  color: #000;
+}
+
+.info-item .value.status {
+  background: #E3F2FD;
+  padding: 2pt 8pt;
+  border-radius: 3pt;
+  color: #1976D2;
+}
+
+/* Sections */
+.section {
+  margin-bottom: 8mm;
+  page-break-inside: avoid;
+}
+
+.section h3 {
+  font-size: 12pt;
+  font-weight: 700;
+  color: #0D2B52;
+  margin-bottom: 4mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px solid #E0E0E0;
+  text-transform: uppercase;
+  letter-spacing: 0.5pt;
+}
+
+/* Data Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table tbody tr {
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table td {
+  padding: 6pt 8pt;
+  vertical-align: top;
+}
+
+.label-cell {
+  width: 35%;
+  font-size: 9pt;
+  color: #666;
+  font-weight: 500;
+}
+
+.value-cell {
+  font-size: 10pt;
+  color: #000;
+  font-weight: 400;
+}
+
+.value-cell strong {
+  font-weight: 700;
+}
+
+/* Footer */
+.print-footer {
+  margin-top: 15mm;
+  padding-top: 5mm;
+  border-top: 1px solid #E0E0E0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 9pt;
+  color: #666;
+}
+
+.signature-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8pt;
+}
+
+.signature-line {
+  padding-top: 15mm;
+  border-top: 1px solid #000;
+  width: 60mm;
+  text-align: center;
+}
+
+.page-number {
+  font-size: 8pt;
+}
+
+/* Print-specific styles */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body {
+    background: white;
+  }
+
+  .print-container {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .section {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure proper page breaks */
+  .print-header {
+    page-break-after: avoid;
+  }
+
+  .app-info-bar {
+    page-break-after: avoid;
+  }
+}
+
+/* Screen preview styles */
+@media screen {
+  body {
+    background: #E0E0E0;
+    padding: 20px;
+  }
+
+  .print-container {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+}

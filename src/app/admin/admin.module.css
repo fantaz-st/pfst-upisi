@@ -1,0 +1,154 @@
+/* ─── Page Header ───────────────────────────────────────── */
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+}
+
+.pageSubtitle {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+/* ─── Stat Cards ────────────────────────────────────────── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.statLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gray-400);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.statValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* ─── Table Card ────────────────────────────────────────── */
+.tableCard {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.tableHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tableTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+}
+
+.appNumber {
+  font-family: monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--blue-main);
+}
+
+.nameCell {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--blue-dark);
+}
+
+.secondaryText {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--gray-400);
+  font-size: 0.9rem;
+}
+
+/* ─── Info Row (detail page) ────────────────────────────── */
+.infoRow {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoLabel {
+  min-width: 180px;
+  font-size: 0.82rem;
+  color: var(--gray-400);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.infoValue {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--blue-dark);
+}
+
+/* ─── Section Paper ─────────────────────────────────────── */
+.sectionPaper {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+/* ─── Greyed out row ────────────────────────────────────── */
+.rowNoAccess {
+  opacity: 0.35;
+  pointer-events: none;
+}

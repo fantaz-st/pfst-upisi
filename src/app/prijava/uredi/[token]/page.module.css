@@ -1,0 +1,102 @@
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+}
+
+.topBar {
+  background: var(--blue-dark);
+  padding: 16px 0;
+}
+
+.topBarLogo {
+  filter: brightness(0) invert(1);
+  height: 36px;
+  width: auto;
+}
+
+.main {
+  padding: 48px 0 80px;
+}
+
+.pageHeader {
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--blue-main);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 700;
+  color: var(--blue-dark);
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.appNumber {
+  font-size: 0.85rem;
+  color: var(--gray-400);
+  font-family: monospace;
+}
+
+.adminMessage {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  display: flex;
+  gap: 12px;
+}
+
+.adminMessageIcon {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.adminMessageLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #92400e;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.adminMessageText {
+  font-size: 0.9rem;
+  color: #78350f;
+  line-height: 1.55;
+}
+
+.expiredCard {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xl);
+  padding: 56px 48px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.expiredTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  margin-bottom: 12px;
+}
+
+.expiredText {
+  font-size: 0.95rem;
+  color: var(--gray-500);
+  line-height: 1.6;
+  max-width: 360px;
+  margin: 0 auto;
+}
