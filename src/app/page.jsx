@@ -45,11 +45,12 @@ export default async function HomePage() {
         <div className={styles.heroPattern} />
         <div className={styles.heroGrid} />
 
-        <Container maxWidth="lg" className={styles.heroContent}>
-          <Box className={styles.heroLogo}>
-            <Image src="/logo.svg" alt="Pomorski fakultet u Splitu" width={220} height={52} className={styles.heroLogoImg} />
-          </Box>
+        {/* Decorativni logo u pozadini */}
+        <div className={styles.heroLogoBg}>
+          <Image src="/logo-white.svg" alt="" width={700} height={600} className={styles.heroLogoBgImg} aria-hidden="true" />
+        </div>
 
+        <Container maxWidth="lg" className={styles.heroContent}>
           <Box className={styles.heroEyebrow}>
             <span className={styles.heroEyebrowDot} />
             <span className={styles.heroEyebrowText}>Akademska godina 2026./2027.</span>
@@ -61,45 +62,13 @@ export default async function HomePage() {
             <span className={styles.heroTitleAccent}>Pomorski fakultet</span>
           </Typography>
 
-          <Typography className={styles.heroSubtitle}>
-            Odaberite vrstu studija i ispunite online prijavu za upis. Priložite tražene dokumente i pratite status vaše prijave.
-          </Typography>
+          <Typography className={styles.heroSubtitle}>Odaberite jednu od ponuđenih prijava i ispunite je. Priložite tražene dokumente i pratite status vaše prijave.</Typography>
 
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Button
-              href="#upisi"
-              variant="contained"
-              size="large"
-              sx={{
-                background: "white",
-                color: "var(--blue-dark)",
-                fontWeight: 700,
-                px: 4,
-                py: 1.5,
-                borderRadius: "100px",
-                "&:hover": { background: "rgba(255,255,255,0.9)" },
-                boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              }}
-            >
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 4 }}>
+            <Button href="#upisi" size="large" variant="outlined">
               Pogledaj studije
             </Button>
-            <Button
-              href="/status"
-              variant="outlined"
-              size="large"
-              sx={{
-                borderColor: "rgba(255,255,255,0.3)",
-                color: "rgba(255,255,255,0.85)",
-                fontWeight: 600,
-                px: 4,
-                py: 1.5,
-                borderRadius: "100px",
-                "&:hover": {
-                  borderColor: "rgba(255,255,255,0.6)",
-                  background: "rgba(255,255,255,0.06)",
-                },
-              }}
-            >
+            <Button href="/status" size="large" variant="contained">
               Provjeri status
             </Button>
           </Box>
@@ -144,11 +113,11 @@ export default async function HomePage() {
       {/* Intakes */}
       <Box id="upisi" className={styles.intakesSection}>
         <Container maxWidth="lg">
-          <span className={styles.sectionEyebrow}>Dostupni programi</span>
+          <span className={styles.sectionEyebrow}>Dostupne prijave</span>
           <Typography variant="h2" className={styles.sectionTitle}>
-            Vrste studija
+            Otvorene prijave
           </Typography>
-          <Typography className={styles.sectionSubtitle}>Odaberite vrstu studija za koji se želite prijaviti i ispunite obrazac za upis.</Typography>
+          {/* <Typography className={styles.sectionSubtitle}>Odaberite jednu od otvorenih prijava i ispunite obrazac za upis.</Typography> */}
           <IntakeCards intakes={intakes} />
         </Container>
       </Box>

@@ -103,19 +103,41 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          padding: "10px 24px",
-          fontWeight: 600,
-          fontSize: "0.9rem",
-          boxShadow: "none",
-          "&:hover": { boxShadow: "none" },
+          borderRadius: "100px",
+          fontWeight: 700,
+          textTransform: "none",
+          padding: "12px 32px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+          transition: "all 0.25s ease",
         },
-        containedPrimary: {
-          background: "#058cc4",
-          "&:hover": { background: "#0f385c" },
+
+        contained: {
+          background: "linear-gradient(135deg, #0B3C5D 0%, #145DA0 100%)",
+          color: "#fff",
+
+          "&:hover": {
+            background: "linear-gradient(135deg, #082c45 0%, #114c85 100%)",
+            boxShadow: "0 8px 28px rgba(11,60,93,0.35)",
+            transform: "translateY(-1px)",
+          },
+        },
+
+        outlined: {
+          background: "rgba(255,255,255,0.92)",
+          color: "var(--blue-dark)",
+          border: "1px solid rgba(255,255,255,0.4)",
+          backdropFilter: "blur(10px)",
+
+          "&:hover": {
+            background: "rgba(255,255,255,0.82)",
+            border: "1px solid rgba(255,255,255,0.6)",
+            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+            transform: "translateY(-1px)",
+          },
         },
       },
     },
+
     MuiTextField: {
       defaultProps: {
         variant: "outlined",
