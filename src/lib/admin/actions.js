@@ -11,7 +11,6 @@ export async function createAdmin({ email, password, role, programs }) {
     password,
     email_confirm: true,
   });
-
   if (authError) return { error: "Greška pri kreiranju korisnika: " + authError.message };
 
   const userId = authData.user.id;
@@ -21,9 +20,7 @@ export async function createAdmin({ email, password, role, programs }) {
   if (roleError) return { error: "Greška pri dodjeljivanju role: " + roleError.message };
 
   if (role === "admin" && programs.length > 0) {
-    const { error: permError } = await supabase
-      .from("admin_program_permissions")
-      .insert(programs.map(program => ({ user_id: userId, program })));
+    const { error: permError } = await supabase.from("admin_program_permissions").insert(programs.map((program) => ({ user_id: userId, program })));
     if (permError) return { error: "Greška pri dodjeljivanju dozvola: " + permError.message };
   }
 
@@ -31,22 +28,23 @@ export async function createAdmin({ email, password, role, programs }) {
   return { success: true };
 }
 
-export async function updateAdmin({ userId, role, programs }) {
+export async function updateAdmin({ userId, role, programs, password }) {
   const supabase = await createClient();
 
-  const { error: roleError } = await supabase
-    .from("admin_roles")
-    .update({ role })
-    .eq("user_id", userId);
+  // Promjena lozinke ako je unesena
+  if (password) {
+    const adminClient = createAdminClient();
+    const { error: passError } = await adminClient.auth.admin.updateUserById(userId, { password });
+    if (passError) return { error: "Greška pri promjeni lozinke: " + passError.message };
+  }
+
+  const { error: roleError } = await supabase.from("admin_roles").update({ role }).eq("user_id", userId);
   if (roleError) return { error: "Greška pri ažuriranju role: " + roleError.message };
 
-  // Obrisi stare i umetni nove
   await supabase.from("admin_program_permissions").delete().eq("user_id", userId);
 
   if (role === "admin" && programs.length > 0) {
-    const { error: permError } = await supabase
-      .from("admin_program_permissions")
-      .insert(programs.map(program => ({ user_id: userId, program })));
+    const { error: permError } = await supabase.from("admin_program_permissions").insert(programs.map((program) => ({ user_id: userId, program })));
     if (permError) return { error: "Greška pri ažuriranju dozvola: " + permError.message };
   }
 
@@ -72,10 +70,7 @@ export async function permanentDeleteApplications(ids) {
 
 export async function restoreApplications(ids) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("applications")
-    .update({ deleted_at: null })
-    .in("id", ids);
+  const { error } = await supabase.from("applications").update({ deleted_at: null }).in("id", ids);
   if (error) return { error: error.message };
   revalidatePath("/admin/otpad");
   return { success: true };

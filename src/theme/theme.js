@@ -100,6 +100,7 @@ const theme = createTheme({
     borderRadius: 10,
   },
   components: {
+    // U temi — UKLONI outlined override:
     MuiButton: {
       styleOverrides: {
         root: {
@@ -110,31 +111,16 @@ const theme = createTheme({
           boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
           transition: "all 0.25s ease",
         },
-
         contained: {
           background: "linear-gradient(135deg, #0B3C5D 0%, #145DA0 100%)",
           color: "#fff",
-
           "&:hover": {
             background: "linear-gradient(135deg, #082c45 0%, #114c85 100%)",
             boxShadow: "0 8px 28px rgba(11,60,93,0.35)",
             transform: "translateY(-1px)",
           },
         },
-
-        outlined: {
-          background: "rgba(255,255,255,0.92)",
-          color: "var(--blue-dark)",
-          border: "1px solid rgba(255,255,255,0.4)",
-          backdropFilter: "blur(10px)",
-
-          "&:hover": {
-            background: "rgba(255,255,255,0.82)",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
-            transform: "translateY(-1px)",
-          },
-        },
+        // ← OBRIŠI cijeli outlined blok
       },
     },
 

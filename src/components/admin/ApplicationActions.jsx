@@ -9,7 +9,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import EditApplicationModal from "./EditApplicationModal";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 
-export default function ApplicationActions({ application, intakeSlug }) {
+export default function ApplicationActions({ application, intakeSlug, intakeStudyLevel }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -33,7 +33,7 @@ export default function ApplicationActions({ application, intakeSlug }) {
         Obriši
       </Button>
 
-      <EditApplicationModal open={editOpen} onClose={() => setEditOpen(false)} application={application} intakeSlug={intakeSlug} />
+      <EditApplicationModal open={editOpen} onClose={() => setEditOpen(false)} application={application} intakeSlug={intakeSlug} intakeStudyLevel={intakeStudyLevel} />
 
       <DeleteConfirmDialog
         open={deleteOpen}

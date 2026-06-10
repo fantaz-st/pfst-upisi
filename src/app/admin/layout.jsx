@@ -9,7 +9,9 @@ export const metadata = {
 
 export default async function AdminLayout({ children }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // If not authenticated, render just the children (login page)
   if (!user) {
@@ -19,14 +21,7 @@ export default async function AdminLayout({ children }) {
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#F5F7FA" }}>
       <AdminNav user={user} />
-      <Box
-        component="main"
-        sx={{
-          flex: 1,
-          ml: { sm: "240px" },
-          overflow: "auto",
-        }}
-      >
+      <Box component="main" sx={{ flex: 1, overflow: "auto" }}>
         {children}
       </Box>
     </Box>

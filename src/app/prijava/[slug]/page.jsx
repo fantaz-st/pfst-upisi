@@ -27,7 +27,7 @@ export default async function ApplicationPage({ params }) {
       <div className={styles.topBar}>
         <Container maxWidth="lg">
           <div className={styles.topBarInner}>
-            <Image src="/logo.svg" alt="Pomorski fakultet u Splitu" width={160} height={36} className={styles.topBarLogo} />
+            <Image src="/logo.svg" alt="Pomorski fakultet u Splitu" width={180} height={50} className={styles.topBarLogo} />
             <Link href="/" className={styles.topBarBack}>
               <ArrowBackIcon sx={{ fontSize: 16 }} />
               Povratak
@@ -39,16 +39,16 @@ export default async function ApplicationPage({ params }) {
       <div className={styles.main}>
         <Container maxWidth="md">
           <div className={styles.breadcrumb}>
-            <Link href="/" className={styles.breadcrumbLink}>Naslovnica</Link>
+            <Link href="/" className={styles.breadcrumbLink}>
+              Naslovnica
+            </Link>
             <span className={styles.breadcrumbSep}>/</span>
             <span className={styles.breadcrumbCurrent}>{intake.title}</span>
           </div>
 
           <div className={styles.pageHeader}>
             <span className={styles.pageEyebrow}>Akademska godina {intake.academic_year}</span>
-            <h1 className={styles.pageTitle}>
-              {applicationConfigs[slug]?.title ?? intake.title}
-            </h1>
+            <h1 className={styles.pageTitle}>{applicationConfigs[slug]?.title ?? intake.title}</h1>
           </div>
 
           {!intake.is_open ? (
@@ -58,8 +58,7 @@ export default async function ApplicationPage({ params }) {
               </div>
               <h2 className={styles.closedTitle}>Prijave nisu otvorene</h2>
               <p className={styles.closedText}>
-                Prijave za <strong>{intake.title}</strong> trenutno nisu otvorene.
-                Pratite našu web stranicu za informacije o rokovima upisa.
+                Prijave za <strong>{intake.title}</strong> trenutno nisu otvorene. Pratite našu web stranicu za informacije o rokovima upisa.
               </p>
               <Button href="/" variant="outlined" sx={{ borderRadius: "100px", px: 4 }}>
                 Povratak na naslovnicu

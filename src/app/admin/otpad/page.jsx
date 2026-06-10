@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import Container from "@mui/material/Container";
-import DeletedApplications from "@/components/admin/DeletedApplications";
 import { isSuperAdmin } from "@/lib/admin/permissions";
+import Container from "@mui/material/Container";
+import ApplicationsTable from "@/components/admin/ApplicationsTable";
 import styles from "../admin.module.css";
 
 export const metadata = { title: "Obrisane prijave — Admin" };
@@ -26,7 +26,8 @@ export default async function TrashPage() {
           </div>
         </div>
       </div>
-      <DeletedApplications applications={applications ?? []} isSuperAdmin={superAdmin} />
+
+      <ApplicationsTable applications={applications ?? []} mode="trash" isSuperAdmin={superAdmin} />
     </Container>
   );
 }

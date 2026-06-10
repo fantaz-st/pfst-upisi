@@ -9,27 +9,31 @@ import AdminLoginForm from "@/components/admin/AdminLoginForm";
 
 export default async function AdminPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) redirect("/admin/moje-prijave");
 
   return (
-    <Box sx={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f385c 0%, #1a5276 50%, #058cc4 100%)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      p: 2,
-      position: "relative",
-      overflow: "hidden",
-      "&::before": {
-        content: '""',
-        position: "absolute",
-        inset: 0,
-        backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-        backgroundSize: "48px 48px",
-      },
-    }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #0f385c 0%, #1a5276 50%, #058cc4 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        position: "relative",
+        overflow: "hidden",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        },
+      }}
+    >
       <Container maxWidth="xs" sx={{ position: "relative", zIndex: 1 }}>
         {/* Logo */}
         <Box sx={{ textAlign: "center", mb: 4 }}>
@@ -46,12 +50,14 @@ export default async function AdminPage() {
         </Box>
 
         {/* Card */}
-        <Paper sx={{
-          p: 4,
-          borderRadius: 3,
-          boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
-          border: "1px solid rgba(255,255,255,0.1)",
-        }}>
+        <Paper
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            boxShadow: "0 24px 64px rgba(0,0,0,0.25)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
           <Typography variant="h6" sx={{ mb: 3, textAlign: "center", fontWeight: 700, color: "var(--blue-dark)" }}>
             Prijava
           </Typography>

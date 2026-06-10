@@ -107,7 +107,7 @@ export default function AdminNav() {
     >
       {/* Logo */}
       <Box sx={{ px: 3, pt: 3, pb: 2.5 }}>
-        <Image src="/logo.svg" alt="Pomorski fakultet" width={160} height={75} style={{ filter: "brightness(0) invert(1)", width: "auto", height: 75 }} />
+        <Image src="/logo.svg" alt="Pomorski fakultet" width={160} height={75} style={{ filter: "brightness(0) invert(1)" }} loading="eager" />
       </Box>
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", mx: 2 }} />

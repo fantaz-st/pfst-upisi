@@ -51,14 +51,14 @@ export const statusesWithEmail = ["accepted", "rejected"];
 export const studyPrograms = {
   prijediplomski: [
     { value: "bs", label: "Brodostrojarstvo" },
-    { value: "pn", label: "Nautika" },
+    { value: "pn", label: "Pomorska nautika" },
     { value: "peit", label: "Pomorske elektrotehničke i informatičke tehnologije" },
     { value: "pm", label: "Pomorski Menadžment" },
     { value: "ptjm", label: "Pomorske tehnologije jahta i marina" },
   ],
   diplomski: [
     { value: "bs", label: "Brodostrojarstvo" },
-    { value: "pn", label: "Nautika" },
+    { value: "pn", label: "Pomorska nautika" },
     { value: "peit", label: "Pomorske elektrotehničke i informatičke tehnologije" },
     { value: "pm", label: "Pomorski Menadžment" },
   ],

@@ -9,7 +9,7 @@ export default async function AdminIntakesPage() {
   const intakes = await getAllIntakesAdmin();
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.pageTitle}>Upravljanje upisima</div>

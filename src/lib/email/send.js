@@ -1,24 +1,23 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+  tls: {
+    ciphers: "SSLv3",
+  },
+});
 
 export async function sendEmail({ to, subject, html }) {
-  try {
-    const { data, error } = await resend.emails.send({
-      from: "Pomorski fakultet Split <upisi@pfst.hr>",
-      to,
-      subject,
-      html,
-    });
-
-    if (error) {
-      console.error("Resend error:", error);
-      return { error };
-    }
-
-    return { success: true, data };
-  } catch (err) {
-    console.error("Send email error:", err);
-    return { error: err.message };
-  }
+  await transporter.sendMail({
+    from: `"Referada Pomorskog fakulteta u Splitu" <upisi@pfst.hr>`,
+    to,
+    subject,
+    html,
+  });
 }

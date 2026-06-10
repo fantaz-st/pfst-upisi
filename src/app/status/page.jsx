@@ -17,7 +17,7 @@ export default function StatusPage() {
       <div className={styles.topBar}>
         <Container maxWidth="lg">
           <div className={styles.topBarInner}>
-            <Image src="/logo.svg" alt="Pomorski fakultet u Splitu" width={160} height={36} className={styles.topBarLogo} />
+            <Image src="/logo.svg" alt="Pomorski fakultet u Splitu" width={180} height={50} className={styles.topBarLogo} />
             <Link href="/" className={styles.topBarBack}>
               <ArrowBackIcon sx={{ fontSize: 16 }} />
               Povratak

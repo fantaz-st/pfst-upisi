@@ -23,17 +23,28 @@ import Stack from "@mui/material/Stack";
 import PersonIcon from "@mui/icons-material/Person";
 import SchoolIcon from "@mui/icons-material/School";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import { fullApplicationSchema } from "@/lib/applications/validation";
 import { submitApplication } from "@/lib/applications/actions";
 import DocumentUpload from "./DocumentUpload";
+import PhotoUpload from "./PhotoUpload";
 import { applicationConfigs, documentTypeLabels, studyPrograms, studyTypes } from "@/lib/applications/config";
 import styles from "./ApplicationForm.module.css";
+
+const genderOptions = [
+  { value: "muški", label: "Muški" },
+  { value: "ženski", label: "Ženski" },
+  { value: "ostalo", label: "Ostalo" },
+];
+
+const maritalOptions = ["Neoženjen / Neudana", "Oženjen / Udana", "Razveden/a", "Udovac / Udovica"];
 
 export default function ApplicationForm({ intake }) {
   const router = useRouter();
   const [serverError, setServerError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState({});
+  const [photo, setPhoto] = useState(null);
 
   const config = applicationConfigs[intake.study_level] ??
     applicationConfigs[intake.slug] ?? {
@@ -55,39 +66,70 @@ export default function ApplicationForm({ intake }) {
       phone: "",
       oib: "",
       birth_date: "",
+      birth_place: "",
+      gender: "",
+      marital_status: "",
       citizenship: "hrvatsko",
       address: "",
       city: "",
       postal_code: "",
       program: "",
       study_type: "",
+      father_name: "",
+      father_occupation: "",
+      father_address: "",
+      mother_name: "",
+      mother_occupation: "",
+      mother_address: "",
       previous_institution: "",
       previous_program: "",
       previous_completion_year: "",
+      other_education: "",
+      ranking_score: "",
       consent: false,
     },
   });
 
   const fillTestData = () => {
+    // Osobni podaci
     setValue("first_name", "Čedomir");
     setValue("last_name", "Babić");
-    setValue("email", "cbabic@pfst.hr");
+    setValue("email", "cbabic.st@gmail.com");
     setValue("phone", "+385997973959");
     setValue("oib", "71233233747");
-    setValue("birth_date", "1988-06-02");
+    setValue("birth_date", "1988-02-06");
+    setValue("birth_place", "Split");
+    setValue("gender", "muški");
+    setValue("marital_status", "Oženjen / Udana");
     setValue("citizenship", "hrvatsko");
     setValue("address", "Vinkovačka 45");
     setValue("city", "Split");
     setValue("postal_code", "21000");
-    setValue("program", "peit");
+    // Studij
+    setValue("program", studyPrograms[intake.study_level]?.[0]?.value || "bs");
     setValue("study_type", "redoviti");
-    setValue("previous_institution", "PFST");
-    setValue("previous_program", "PEIT");
-    setValue("previous_completion_year", "2006");
+    // Roditelji
+    setValue("father_name", "Ante");
+    setValue("father_occupation", "Vozač");
+    setValue("father_address", "Vinkovačka 45, Split");
+    setValue("mother_name", "Lucija");
+    setValue("mother_occupation", "Upravni referent");
+    setValue("mother_address", "Vinkovačka 45, Split");
+    // Obrazovanje
+    setValue("previous_institution", "Elektrotehnička škola Split");
+    setValue("previous_program", "Tehničar za računalstvo");
+    setValue("previous_completion_year", "2005");
+    setValue("other_education", "");
+    setValue("ranking_score", "1");
     setValue("consent", true);
   };
 
   const onSubmit = async (data) => {
+    if (!photo) {
+      setServerError("Molimo dodajte fotografiju pristupnika.");
+      return;
+    }
+
     const missingDocs = config.requiredDocuments.filter((docType) => !uploadedFiles[docType]);
     if (missingDocs.length > 0) {
       setServerError(`Nedostaju obavezni dokumenti: ${missingDocs.map((d) => documentTypeLabels[d]).join(", ")}`);
@@ -106,9 +148,9 @@ export default function ApplicationForm({ intake }) {
         return;
       }
 
-      if (result.applicationId && Object.keys(uploadedFiles).length > 0) {
+      if (result.applicationId) {
         const { uploadDocuments } = await import("@/lib/applications/actions");
-        const filesToUpload = Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }));
+        const filesToUpload = [{ documentType: "photo", file: photo }, ...Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))];
         await uploadDocuments(result.applicationId, filesToUpload);
       }
 
@@ -187,6 +229,15 @@ export default function ApplicationForm({ intake }) {
               )}
             />
           </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Controller
+              name="ranking_score"
+              control={control}
+              render={({ field }) => (
+                <TextField {...field} label="Plasman na rang listi" fullWidth error={!!errors.ranking_score} helperText={errors.ranking_score?.message} placeholder="npr. 85.50" />
+              )}
+            />
+          </Grid>
         </Grid>
       </Paper>
 
@@ -250,7 +301,52 @@ export default function ApplicationForm({ intake }) {
               )}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Controller
+              name="birth_place"
+              control={control}
+              render={({ field }) => <TextField {...field} label="Mjesto rođenja *" fullWidth error={!!errors.birth_place} helperText={errors.birth_place?.message} />}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <Controller
+              name="gender"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.gender}>
+                  <InputLabel>Spol *</InputLabel>
+                  <Select {...field} label="Spol *">
+                    {genderOptions.map((o) => (
+                      <MenuItem key={o.value} value={o.value}>
+                        {o.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.gender && <FormHelperText>{errors.gender.message}</FormHelperText>}
+                </FormControl>
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <Controller
+              name="marital_status"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.marital_status}>
+                  <InputLabel>Bračno stanje *</InputLabel>
+                  <Select {...field} label="Bračno stanje *">
+                    {maritalOptions.map((o) => (
+                      <MenuItem key={o} value={o}>
+                        {o}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errors.marital_status && <FormHelperText>{errors.marital_status.message}</FormHelperText>}
+                </FormControl>
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Controller
               name="citizenship"
               control={control}
@@ -264,6 +360,13 @@ export default function ApplicationForm({ intake }) {
               render={({ field }) => <TextField {...field} label="Adresa *" fullWidth error={!!errors.address} helperText={errors.address?.message} />}
             />
           </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Controller
+              name="city"
+              control={control}
+              render={({ field }) => <TextField {...field} label="Grad *" fullWidth error={!!errors.city} helperText={errors.city?.message} />}
+            />
+          </Grid>
           <Grid size={{ xs: 12, sm: 3 }}>
             <Controller
               name="postal_code"
@@ -271,11 +374,69 @@ export default function ApplicationForm({ intake }) {
               render={({ field }) => <TextField {...field} label="Poštanski broj *" fullWidth error={!!errors.postal_code} helperText={errors.postal_code?.message} />}
             />
           </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Podaci o roditeljima */}
+      <Paper variant="outlined" className={styles.sectionPaper}>
+        <SectionHeader icon={<FamilyRestroomIcon sx={{ fontSize: 18 }} />} title="Podaci o roditeljima" />
+        <Grid container spacing={2}>
+          {/* Otac */}
           <Grid size={{ xs: 12 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-600)", mb: 1 }}>
+              Otac
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <Controller
-              name="city"
+              name="father_name"
               control={control}
-              render={({ field }) => <TextField {...field} label="Grad *" fullWidth error={!!errors.city} helperText={errors.city?.message} />}
+              render={({ field }) => <TextField {...field} label="Ime oca" fullWidth error={!!errors.father_name} helperText={errors.father_name?.message} />}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Controller
+              name="father_occupation"
+              control={control}
+              render={({ field }) => (
+                <TextField {...field} label="Zvanje i zanimanje oca" fullWidth error={!!errors.father_occupation} helperText={errors.father_occupation?.message} />
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Controller
+              name="father_address"
+              control={control}
+              render={({ field }) => <TextField {...field} label="Adresa oca" fullWidth error={!!errors.father_address} helperText={errors.father_address?.message} />}
+            />
+          </Grid>
+          {/* Majka */}
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-600)", mb: 1, mt: 1 }}>
+              Majka
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Controller
+              name="mother_name"
+              control={control}
+              render={({ field }) => <TextField {...field} label="Ime majke" fullWidth error={!!errors.mother_name} helperText={errors.mother_name?.message} />}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Controller
+              name="mother_occupation"
+              control={control}
+              render={({ field }) => (
+                <TextField {...field} label="Zvanje i zanimanje majke" fullWidth error={!!errors.mother_occupation} helperText={errors.mother_occupation?.message} />
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Controller
+              name="mother_address"
+              control={control}
+              render={({ field }) => <TextField {...field} label="Adresa majke" fullWidth error={!!errors.mother_address} helperText={errors.mother_address?.message} />}
             />
           </Grid>
         </Grid>
@@ -292,11 +453,11 @@ export default function ApplicationForm({ intake }) {
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Prethodna obrazovna ustanova *"
+                  label="Završena srednja škola *"
                   fullWidth
                   error={!!errors.previous_institution}
                   helperText={errors.previous_institution?.message}
-                  placeholder="npr. Srednja pomorska škola Split"
+                  placeholder="npr. Pomorska škola Split"
                 />
               )}
             />
@@ -325,16 +486,35 @@ export default function ApplicationForm({ intake }) {
               )}
             />
           </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Controller
+              name="other_education"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Je li završio/la ili polazio/la drugi fakultet ili višu školu?"
+                  fullWidth
+                  multiline
+                  rows={2}
+                  error={!!errors.other_education}
+                  helperText={errors.other_education?.message}
+                  placeholder="Unesite naziv i razlog prekida studija, ili ostavite prazno"
+                />
+              )}
+            />
+          </Grid>
         </Grid>
       </Paper>
 
-      {/* Dokumenti */}
+      {/* Fotografija + Dokumenti */}
       <Paper variant="outlined" className={styles.sectionPaper}>
-        <SectionHeader icon={<UploadFileIcon sx={{ fontSize: 18 }} />} title="Dokumenti" />
+        <SectionHeader icon={<UploadFileIcon sx={{ fontSize: 18 }} />} title="Fotografija i dokumenti" />
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Učitajte skenove ili fotografije svih traženih dokumenata (PDF, JPG, PNG — max 10MB po datoteci).
+          Učitajte fotografiju i skenove ili fotografije svih traženih dokumenata (PDF, JPG, PNG — max 10MB po datoteci).
         </Typography>
         <Stack spacing={2}>
+          <PhotoUpload onPhotoChange={setPhoto} />
           {config.requiredDocuments.map((docType) => (
             <DocumentUpload
               key={docType}
@@ -369,7 +549,6 @@ export default function ApplicationForm({ intake }) {
         />
       </Paper>
 
-      {/* Submit */}
       <Box className={styles.submitContainer}>
         <Button type="submit" variant="contained" size="large" disabled={isSubmitting} className={styles.submitButton}>
           {isSubmitting ? (

@@ -7,6 +7,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
@@ -27,39 +28,37 @@ export default function EditAdminModal({ open, onClose, admin }) {
   const router = useRouter();
   const [role, setRole] = useState("admin");
   const [programs, setPrograms] = useState([]);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingPerms, setLoadingPerms] = useState(false);
   const [error, setError] = useState(null);
 
-  const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski]
-    .filter((prog, index, self) => index === self.findIndex(p => p.value === prog.value));
+  const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski].filter((prog, index, self) => index === self.findIndex((p) => p.value === prog.value));
 
   useEffect(() => {
     if (!open || !admin) return;
     setRole(admin.role);
+    setPassword("");
     setError(null);
 
     async function loadPermissions() {
       setLoadingPerms(true);
       const supabase = createClient();
-      const { data } = await supabase
-        .from("admin_program_permissions")
-        .select("program")
-        .eq("user_id", admin.user_id);
-      setPrograms(data?.map(p => p.program) || []);
+      const { data } = await supabase.from("admin_program_permissions").select("program").eq("user_id", admin.user_id);
+      setPrograms(data?.map((p) => p.program) || []);
       setLoadingPerms(false);
     }
     loadPermissions();
   }, [open, admin]);
 
   const handleProgramToggle = (value) => {
-    setPrograms(prev => prev.includes(value) ? prev.filter(p => p !== value) : [...prev, value]);
+    setPrograms((prev) => (prev.includes(value) ? prev.filter((p) => p !== value) : [...prev, value]));
   };
 
   const handleSave = async () => {
     setLoading(true);
     setError(null);
-    const result = await updateAdmin({ userId: admin.user_id, role, programs });
+    const result = await updateAdmin({ userId: admin.user_id, role, programs, password: password || null });
     if (result.error) {
       setError(result.error);
       setLoading(false);
@@ -79,7 +78,11 @@ export default function EditAdminModal({ open, onClose, admin }) {
       </DialogTitle>
 
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
         {loadingPerms ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
@@ -87,13 +90,24 @@ export default function EditAdminModal({ open, onClose, admin }) {
           </Box>
         ) : (
           <>
-            <FormControl fullWidth size="small" sx={{ mb: 3, mt: 1 }}>
+            <FormControl fullWidth size="small" sx={{ mb: 2, mt: 1 }}>
               <InputLabel>Razina pristupa</InputLabel>
-              <Select value={role} label="Razina pristupa" onChange={e => setRole(e.target.value)}>
+              <Select value={role} label="Razina pristupa" onChange={(e) => setRole(e.target.value)}>
                 <MenuItem value="admin">Administrator</MenuItem>
                 <MenuItem value="super_admin">Super Administrator</MenuItem>
               </Select>
             </FormControl>
+
+            <TextField
+              label="Nova lozinka"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              size="small"
+              helperText="Ostavite prazno ako ne želite mijenjati lozinku"
+              sx={{ mb: 3 }}
+            />
 
             {role === "admin" && (
               <>
@@ -102,7 +116,7 @@ export default function EditAdminModal({ open, onClose, admin }) {
                   Dozvoljeni studiji:
                 </Typography>
                 <FormGroup>
-                  {allPrograms.map(prog => (
+                  {allPrograms.map((prog) => (
                     <FormControlLabel
                       key={prog.value}
                       control={<Checkbox size="small" checked={programs.includes(prog.value)} onChange={() => handleProgramToggle(prog.value)} />}
@@ -117,9 +131,15 @@ export default function EditAdminModal({ open, onClose, admin }) {
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} disabled={loading}>Odustani</Button>
-        <Button onClick={handleSave} variant="contained" disabled={loading || loadingPerms}
-          sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}>
+        <Button onClick={onClose} disabled={loading}>
+          Odustani
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={loading || loadingPerms}
+          sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}
+        >
           {loading ? <CircularProgress size={20} /> : "Spremi"}
         </Button>
       </DialogActions>

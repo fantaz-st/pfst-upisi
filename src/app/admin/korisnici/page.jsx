@@ -16,7 +16,7 @@ export default async function AdminUsersPage() {
   const { data: admins } = await supabase.from("admin_roles").select("*").order("created_at", { ascending: false });
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.pageTitle}>Upravljanje administratorima</div>
