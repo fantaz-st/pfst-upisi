@@ -3,9 +3,11 @@ const nextConfig = {
   experimental: {
     serverActions: {
       allowedOrigins: ["localhost:3000"],
-      bodySizeLimit: "10mb", // Increase from default 1mb to 10mb
+      bodySizeLimit: "10mb",
+    },
+    outputFileTracingIncludes: {
+      "/api/applications/[id]/pdf": ["./src/fonts/**/*"],
     },
   },
 };
-
 module.exports = nextConfig;

@@ -1,59 +1,74 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Font } from "@react-pdf/renderer";
-import { fileURLToPath } from "url";
-import { join, dirname } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-Font.register({
-  family: "Roboto",
-  fonts: [
-    { src: join(__dirname, "..", "fonts", "Roboto-Regular.ttf"), fontWeight: 400 },
-    { src: join(__dirname, "..", "fonts", "Roboto-Bold.ttf"), fontWeight: 700 },
-  ],
-});
+import { join } from "path";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Roboto", backgroundColor: "#FFFFFF" },
   header: {
-    marginBottom: 20, paddingBottom: 14,
-    borderBottomWidth: 2, borderBottomColor: "#0f385c", borderBottomStyle: "solid",
+    marginBottom: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: "#0f385c",
+    borderBottomStyle: "solid",
   },
   universityName: { fontSize: 15, fontWeight: 700, color: "#0f385c", marginBottom: 3 },
   facultyName: { fontSize: 10, color: "#666666", marginBottom: 8 },
   documentTitle: { fontSize: 18, fontWeight: 700, color: "#058cc4", letterSpacing: 0.8 },
   infoBar: {
-    flexDirection: "row", justifyContent: "space-between",
-    backgroundColor: "#f0f8fd", padding: 10, marginBottom: 18,
-    borderRadius: 4, borderWidth: 1, borderColor: "#c8e6f5", borderStyle: "solid",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f0f8fd",
+    padding: 10,
+    marginBottom: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#c8e6f5",
+    borderStyle: "solid",
   },
   infoItem: { flexDirection: "column", gap: 2 },
   infoLabel: { fontSize: 7, color: "#888888", textTransform: "uppercase", letterSpacing: 0.5 },
   infoValue: { fontSize: 9, fontWeight: 700, color: "#0f385c" },
   section: { marginBottom: 14 },
   sectionTitle: {
-    fontSize: 9, fontWeight: 700, color: "#0f385c",
-    marginBottom: 7, paddingBottom: 4,
-    borderBottomWidth: 1, borderBottomColor: "#e2e8f0", borderBottomStyle: "solid",
-    textTransform: "uppercase", letterSpacing: 0.8,
+    fontSize: 9,
+    fontWeight: 700,
+    color: "#0f385c",
+    marginBottom: 7,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    borderBottomStyle: "solid",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   sectionWithPhoto: { flexDirection: "row", gap: 16, marginBottom: 14 },
   sectionContent: { flex: 1 },
   photoBox: {
-    width: 90, height: 90,
-    borderWidth: 1, borderColor: "#e2e8f0", borderStyle: "solid",
-    borderRadius: 4, overflow: "hidden", flexShrink: 0, backgroundColor: "#f8fafc",
+    width: 90,
+    height: 90,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderStyle: "solid",
+    borderRadius: 4,
+    overflow: "hidden",
+    flexShrink: 0,
+    backgroundColor: "#f8fafc",
   },
   photo: { width: 90, height: 90, objectFit: "cover" },
   photoPlaceholder: {
-    width: 90, height: 90, backgroundColor: "#f1f5f9",
-    alignItems: "center", justifyContent: "center",
+    width: 90,
+    height: 90,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
   },
   photoPlaceholderText: { fontSize: 7, color: "#94a3b8", textAlign: "center" },
   dataRow: {
-    flexDirection: "row", paddingVertical: 4,
-    borderBottomWidth: 1, borderBottomColor: "#f8fafc", borderBottomStyle: "solid",
+    flexDirection: "row",
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f8fafc",
+    borderBottomStyle: "solid",
   },
   dataLabel: { width: "38%", fontSize: 8, color: "#64748b" },
   dataValue: { width: "62%", fontSize: 9, color: "#0f172a" },
@@ -62,15 +77,28 @@ const styles = StyleSheet.create({
   colHalf: { flex: 1 },
   subTitle: { fontSize: 8, fontWeight: 700, color: "#475569", marginBottom: 4, marginTop: 6 },
   footer: {
-    position: "absolute", bottom: 30, left: 40, right: 40,
+    position: "absolute",
+    bottom: 30,
+    left: 40,
+    right: 40,
     paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: "#e2e8f0", borderTopStyle: "solid",
-    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end",
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+    borderTopStyle: "solid",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
   },
   signatureLine: {
-    marginTop: 32, paddingTop: 8,
-    borderTopWidth: 1, borderTopColor: "#000000", borderTopStyle: "solid",
-    width: 140, textAlign: "center", fontSize: 7, color: "#64748b",
+    marginTop: 32,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#000000",
+    borderTopStyle: "solid",
+    width: 140,
+    textAlign: "center",
+    fontSize: 7,
+    color: "#64748b",
   },
   footerText: { fontSize: 7, color: "#94a3b8" },
 });
@@ -83,7 +111,14 @@ const DataRow = ({ label, value, bold = false }) => (
 );
 
 export default function ApplicationPDF({ application, programLabel, studyTypeLabel, statusLabel, photoUrl }) {
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString("hr-HR") : "—";
+  Font.register({
+    family: "Roboto",
+    fonts: [
+      { src: join(process.cwd(), "src", "fonts", "Roboto-Regular.woff"), fontWeight: 400 },
+      { src: join(process.cwd(), "src", "fonts", "Roboto-Bold.woff"), fontWeight: 700 },
+    ],
+  });
+  const formatDate = (d) => (d ? new Date(d).toLocaleDateString("hr-HR") : "—");
 
   return (
     <Document>
@@ -150,8 +185,6 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
           </View>
         </View>
 
-
-
         {/* Roditelji */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PODACI O RODITELJIMA</Text>
@@ -198,9 +231,7 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
             </View>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>
-              Sveučilište u Splitu · Pomorski fakultet
-            </Text>
+            <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Sveučilište u Splitu · Pomorski fakultet</Text>
             <Text style={styles.footerText}>Datum ispisa: {formatDate(new Date().toISOString())}</Text>
           </View>
         </View>

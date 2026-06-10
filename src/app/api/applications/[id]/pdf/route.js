@@ -8,11 +8,7 @@ export async function GET(request, { params }) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: application, error } = await supabase
-    .from("applications")
-    .select(`*, intakes ( title, academic_year, slug ), application_documents ( * )`)
-    .eq("id", id)
-    .single();
+  const { data: application, error } = await supabase.from("applications").select(`*, intakes ( title, academic_year, slug ), application_documents ( * )`).eq("id", id).single();
 
   if (error || !application) {
     return new NextResponse("Application not found", { status: 404 });
@@ -20,26 +16,18 @@ export async function GET(request, { params }) {
 
   const statusLabel = applicationStatuses[application.status]?.label || application.status;
   const programLabel = getProgramLabel(application.program);
-  const studyTypeLabel = studyTypes.find(t => t.value === application.study_type)?.label || application.study_type;
+  const studyTypeLabel = studyTypes.find((t) => t.value === application.study_type)?.label || application.study_type;
 
   // Dohvati signed URL za fotografiju
   let photoUrl = null;
-  const photoDoc = application.application_documents?.find(d => d.document_type === "photo");
+  const photoDoc = application.application_documents?.find((d) => d.document_type === "photo");
   if (photoDoc) {
-    const { data: signedData } = await supabase.storage
-      .from("application-documents")
-      .createSignedUrl(photoDoc.file_path, 60); // 60 sekundi — dovoljno za generiranje PDF-a
+    const { data: signedData } = await supabase.storage.from("application-documents").createSignedUrl(photoDoc.file_path, 60); // 60 sekundi — dovoljno za generiranje PDF-a
     photoUrl = signedData?.signedUrl || null;
   }
 
   const stream = await renderToStream(
-    <ApplicationPDF
-      application={application}
-      programLabel={programLabel}
-      studyTypeLabel={studyTypeLabel}
-      statusLabel={statusLabel}
-      photoUrl={photoUrl}
-    />
+    <ApplicationPDF application={application} programLabel={programLabel} studyTypeLabel={studyTypeLabel} statusLabel={statusLabel} photoUrl={photoUrl} />,
   );
 
   const fileName = `Upisni_list_${application.application_number}.pdf`;
