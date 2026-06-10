@@ -12,8 +12,8 @@ const styles = StyleSheet.create({
     borderBottomStyle: "solid",
   },
   universityName: { fontSize: 15, fontWeight: 700, color: "#0f385c", marginBottom: 3 },
-  facultyName: { fontSize: 10, color: "#666666", marginBottom: 8 },
-  documentTitle: { fontSize: 18, fontWeight: 700, color: "#058cc4", letterSpacing: 0.8 },
+  facultyName: { fontSize: 10, color: "#666666", marginBottom: 8, textAlign: "center" },
+  documentTitle: { fontSize: 18, fontWeight: 700, color: "#058cc4", letterSpacing: 0.8, textAlign: "center" },
   infoBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -125,8 +125,8 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.facultyName}>Sveučilište u Splitu</Text>
-          <Text style={styles.universityName}>POMORSKI FAKULTET</Text>
+          <Text style={styles.facultyName}>Sveučilište u Splitu, POMORSKI FAKULTET</Text>
+          {/* <Text style={styles.universityName}>POMORSKI FAKULTET</Text> */}
           <Text style={styles.documentTitle}>UPISNI LIST</Text>
         </View>
 
