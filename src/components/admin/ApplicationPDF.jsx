@@ -1,11 +1,17 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Font } from "@react-pdf/renderer";
+import { fileURLToPath } from "url";
+import { join, dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const ROOT = join(__dirname, "..", "..", "..", "public", "fonts");
 
 Font.register({
   family: "Roboto",
   fonts: [
-    { src: "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9fBBc4.woff2", fontWeight: 700 },
+    { src: join(ROOT, "Roboto-Regular.ttf"), fontWeight: 400 },
+    { src: join(ROOT, "Roboto-Bold.ttf"), fontWeight: 700 },
   ],
 });
 
@@ -18,9 +24,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#0f385c",
     borderBottomStyle: "solid",
   },
-  universityName: { fontSize: 15, fontWeight: 700, color: "#0f385c", marginBottom: 3, textAlign: "center" },
-  facultyName: { fontSize: 10, color: "#666666", marginBottom: 8, textAlign: "center" },
-  documentTitle: { fontSize: 18, fontWeight: 700, color: "#010202", letterSpacing: 0.8, textAlign: "center" },
+  universityName: { fontSize: 15, fontWeight: 700, color: "#0f385c", marginBottom: 3 },
+  facultyName: { fontSize: 10, color: "#666666", marginBottom: 8 },
+  documentTitle: { fontSize: 18, fontWeight: 700, color: "#058cc4", letterSpacing: 0.8 },
   infoBar: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -35,7 +41,7 @@ const styles = StyleSheet.create({
   infoItem: { flexDirection: "column", gap: 2 },
   infoLabel: { fontSize: 7, color: "#888888", textTransform: "uppercase", letterSpacing: 0.5 },
   infoValue: { fontSize: 9, fontWeight: 700, color: "#0f385c" },
-  section: { marginBottom: 24 },
+  section: { marginBottom: 14 },
   sectionTitle: {
     fontSize: 9,
     fontWeight: 700,
@@ -125,8 +131,8 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.facultyName}>Sveučilište u Splitu, POMORSKI FAKULTET</Text>
-          {/* <Text style={styles.universityName}>POMORSKI FAKULTET</Text> */}
+          <Text style={styles.facultyName}>Sveučilište u Splitu</Text>
+          <Text style={styles.universityName}>POMORSKI FAKULTET</Text>
           <Text style={styles.documentTitle}>UPISNI LIST</Text>
         </View>
 
