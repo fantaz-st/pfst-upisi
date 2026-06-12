@@ -86,7 +86,7 @@ export default async function ApplicationDetailPage({ params }) {
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Osobni podaci</div>
             <Box sx={{ display: "flex", gap: 2.5, mb: 2 }}>
-              <ApplicantPhoto documents={application.application_documents} />
+              <ApplicantPhoto documents={application.application_documents} firstName={application.first_name} lastName={application.last_name} />
               <Box sx={{ flex: 1 }}>
                 <InfoRow label="JMBAG" value={application.jmbag} />
                 <InfoRow label="Email" value={application.email} />

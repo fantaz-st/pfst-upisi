@@ -238,12 +238,6 @@ export default function ApplicationForm({ intake }) {
         </Alert>
       )}
 
-      {serverError && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {serverError}
-        </Alert>
-      )}
-
       {/* Odabir studija */}
       <Paper variant="outlined" className={styles.sectionPaper}>
         <SectionHeader icon={<SchoolIcon sx={{ fontSize: 18 }} />} title="Podaci o studiju" />
@@ -301,7 +295,9 @@ export default function ApplicationForm({ intake }) {
               <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)", mb: 1 }}>
                 Izjava o upisu *
               </Typography>
-
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                Izvanredni studenti mogu preskočiti ovaj korak.
+              </Typography>
               <Controller
                 name="enrollment_type"
                 control={control}
@@ -350,7 +346,16 @@ export default function ApplicationForm({ intake }) {
             <Controller
               name="email"
               control={control}
-              render={({ field }) => <TextField {...field} label="Email adresa *" type="email" fullWidth error={!!errors.email} helperText={errors.email?.message} />}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Email adresa *"
+                  type="email"
+                  fullWidth
+                  error={!!errors.email}
+                  helperText={errors.email?.message || "Koristite email koji redovito provjeravate — na njega ćemo slati sve obavijesti o statusu prijave."}
+                />
+              )}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -643,22 +648,10 @@ export default function ApplicationForm({ intake }) {
               <FormControlLabel
                 control={<Checkbox {...field} checked={field.value} color="primary" />}
                 label={
-                  <Box>
-                    <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 1.5 }}>
-                      Na temelju točke 32. Opće uredbe o zaštiti podataka, EC 2016/679 i odredbi Zakona o provedbi Opće uredbe o zaštiti osobnih podataka ("Narodne novine" broj
-                      42/18), svojim potpisom dajem <strong>PRIVOLU</strong> Pomorskom fakultetu u Splitu da u svrhu ostvarivanja mojih prava iz studentskog standarda i službene
-                      komunikacije tijekom studiranja koristi moje osobne podatke.
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                      Napomena:
-                    </Typography>
-                    <Typography variant="body2" sx={{ lineHeight: 1.6, color: "var(--gray-600)" }}>
-                      Navedeni osobni podaci koristit će se isključivo u gore navedenu svrhu u skladu s odredbama Opće uredbe o zaštiti podataka EC 2016/679, te se u druge svrhe ne
-                      smiju koristiti bez pisane privole osobe na koju se odnose. Daljnja obrada osobnih podataka u povijesne, statističke ili znanstvene svrhe neće se smatrati
-                      nepodudarnom, pod uvjetom da se poduzmu odgovarajuće zaštitne mjere. Student ima pravo u svako doba odustati od dane privole i zatražiti prestanak daljnje
-                      obrade, na način da ispuni za to propisani obrazac te ga dostavi voditelju obrade osobnih podataka.
-                    </Typography>
-                  </Box>
+                  <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                    Potvrđujem da su svi uneseni podaci točni i da su priloženi dokumenti autentični. Suglasan/na sam s obradom osobnih podataka u svrhu upisa na Pomorski fakultet
+                    Split, sukladno Uredbi (EU) 2016/679 (GDPR).
+                  </Typography>
                 }
               />
               {errors.consent && <FormHelperText error>{errors.consent.message}</FormHelperText>}
@@ -666,6 +659,12 @@ export default function ApplicationForm({ intake }) {
           )}
         />
       </Paper>
+
+      {serverError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {serverError}
+        </Alert>
+      )}
 
       <Box className={styles.submitContainer}>
         <Button type="submit" variant="contained" size="large" disabled={isSubmitting} className={styles.submitButton}>

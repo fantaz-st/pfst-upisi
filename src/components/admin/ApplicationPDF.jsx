@@ -24,9 +24,10 @@ const styles = StyleSheet.create({
     borderColor: "#c8e6f5",
     borderStyle: "solid",
   },
-  infoItem: { flexDirection: "column", gap: 2 },
-  infoLabel: { fontSize: 7, color: "#888888", textTransform: "uppercase", letterSpacing: 0.5 },
-  infoValue: { fontSize: 9, fontWeight: 700, color: "#0f385c" },
+  infoItem: { flexDirection: "column", gap: 2, alignItems: "center" },
+  infoLabel: { fontSize: 8, color: "#888888", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" },
+  infoValue: { fontSize: 10, fontWeight: 700, color: "#0f385c", textAlign: "center" },
+
   section: { marginBottom: 22 },
   sectionTitle: {
     fontSize: 9,
@@ -157,6 +158,10 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
             <Text style={styles.infoLabel}>Godina studiranja</Text>
             <Text style={styles.infoValue}>1.</Text>
           </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Ak. godina</Text>
+            <Text style={styles.infoValue}>{application.intakes?.academic_year || "—"}</Text>
+          </View>
         </View>
 
         {/* Osobni podaci */}
@@ -188,7 +193,7 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
               <DataRow label="Državljanstvo" value={application.citizenship} />
               <DataRow label="Email" value={application.email} />
               <DataRow label="Mobitel" value={application.phone} />
-              <DataRow label="Adresa boravka" value={`${application.address || ""}, ${application.postal_code || ""} ${application.city || ""}`.trim()} />
+              <DataRow label="Adresa" value={`${application.address || ""}, ${application.postal_code || ""} ${application.city || ""}`.trim()} />
             </View>
           </View>
         </View>
@@ -265,7 +270,7 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Sveučilište u Splitu · Pomorski fakultet</Text>
-            <Text style={styles.footerText}>Datum upisa: {formatDate(new Date().toISOString())}</Text>
+            <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Datum upisa: {formatDate(new Date().toISOString())}</Text>
           </View>
         </View>
       </Page>

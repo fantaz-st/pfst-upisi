@@ -18,16 +18,13 @@ import RotateLeftIcon from "@mui/icons-material/RotateLeft";
 import RotateRightIcon from "@mui/icons-material/RotateRight";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
+import ZoomInIcon from "@mui/icons-material/ZoomIn";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB input
 const OUTPUT_SIZE = 300; // 300x300px output
 
 function centerAspectCrop(mediaWidth, mediaHeight) {
-  return centerCrop(
-    makeAspectCrop({ unit: "%", width: 80 }, 1, mediaWidth, mediaHeight),
-    mediaWidth,
-    mediaHeight
-  );
+  return centerCrop(makeAspectCrop({ unit: "%", width: 80 }, 1, mediaWidth, mediaHeight), mediaWidth, mediaHeight);
 }
 
 export default function PhotoUpload({ onPhotoChange }) {
@@ -39,6 +36,7 @@ export default function PhotoUpload({ onPhotoChange }) {
   const [scale, setScale] = useState(1);
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [guidelinesZoom, setGuidelinesZoom] = useState(false);
 
   const imgRef = useRef(null);
   const inputRef = useRef(null);
@@ -92,26 +90,20 @@ export default function PhotoUpload({ onPhotoChange }) {
     ctx.scale(scale, scale);
     ctx.translate(-OUTPUT_SIZE / 2, -OUTPUT_SIZE / 2);
 
-    ctx.drawImage(
-      img,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0,
-      0,
-      OUTPUT_SIZE,
-      OUTPUT_SIZE
-    );
+    ctx.drawImage(img, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
     ctx.restore();
 
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const file = new File([blob], "slika-pristupnika.jpg", { type: "image/jpeg" });
-        resolve({ file, dataUrl: canvas.toDataURL("image/jpeg", 0.92) });
-      }, "image/jpeg", 0.92);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          const file = new File([blob], "slika-pristupnika.jpg", { type: "image/jpeg" });
+          resolve({ file, dataUrl: canvas.toDataURL("image/jpeg", 0.92) });
+        },
+        "image/jpeg",
+        0.92,
+      );
     });
   }, [completedCrop, rotation, scale]);
 
@@ -131,14 +123,16 @@ export default function PhotoUpload({ onPhotoChange }) {
 
   return (
     <>
-      <Box sx={{
-        border: "1px solid",
-        borderColor: preview ? "success.main" : "divider",
-        borderRadius: 2,
-        p: 2,
-        background: preview ? "rgba(46,125,50,0.04)" : "#FAFBFC",
-        transition: "all 0.15s",
-      }}>
+      <Box
+        sx={{
+          border: "1px solid",
+          borderColor: preview ? "success.main" : "divider",
+          borderRadius: 2,
+          p: 2,
+          background: preview ? "rgba(46,125,50,0.04)" : "#FAFBFC",
+          transition: "all 0.15s",
+        }}
+      >
         <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
           Fotografija pristupnika <span style={{ color: "var(--mui-palette-error-main)" }}>*</span>
         </Typography>
@@ -146,12 +140,102 @@ export default function PhotoUpload({ onPhotoChange }) {
           Jasna fotografija lica (300×300px) — koristit će se za izradu studentske iskaznice
         </Typography>
 
+        {/* Uputa za fotografiju */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            alignItems: "flex-start",
+            background: "#FAFBFC",
+            border: "1px solid var(--gray-200)",
+            borderRadius: 2,
+            p: 1.5,
+            mb: 2,
+            flexWrap: "wrap",
+          }}
+        >
+          <Box
+            onClick={() => setGuidelinesZoom(true)}
+            sx={{
+              position: "relative",
+              width: { xs: "100%", sm: 220 },
+              flexShrink: 0,
+              cursor: "zoom-in",
+              borderRadius: 1,
+              overflow: "hidden",
+              "&:hover img": { opacity: 0.85 },
+              "&:hover .zoom-badge": { opacity: 1 },
+            }}
+          >
+            <Box
+              component="img"
+              src="/photo-guidelines.png"
+              alt="Primjeri prihvatljivih i neprihvatljivih fotografija"
+              sx={{ width: "100%", height: "auto", display: "block", transition: "opacity 0.15s" }}
+            />
+            <Box
+              className="zoom-badge"
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                background: "rgba(15,56,92,0.75)",
+                borderRadius: "50%",
+                width: 28,
+                height: 28,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: 0.85,
+                transition: "opacity 0.15s",
+              }}
+            >
+              <ZoomInIcon sx={{ color: "white", fontSize: 18 }} />
+            </Box>
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 200 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: "block", mb: 0.5 }}>
+              Uputa za fotografiju:
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2.5, "& li": { mb: 0.25 } }}>
+              <Typography component="li" variant="caption">
+                Format: .jpg, .jpeg, .png
+              </Typography>
+              <Typography component="li" variant="caption">
+                Glava frontalna, bez nagiba
+              </Typography>
+              <Typography component="li" variant="caption">
+                Neutralan izraz, oči otvorene, usta zatvorena
+              </Typography>
+              <Typography component="li" variant="caption">
+                Jednobojna (bijela) pozadina
+              </Typography>
+              <Typography component="li" variant="caption">
+                Kosa ne prekriva lice
+              </Typography>
+              <Typography component="li" variant="caption">
+                Bez sunčanih/tamnih naočala
+              </Typography>
+              <Typography component="li" variant="caption">
+                Oštra fotografija, ravnomjerna rasvjeta
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
         {preview ? (
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Box sx={{
-              width: 64, height: 64, borderRadius: 1.5, overflow: "hidden",
-              border: "2px solid", borderColor: "success.main", flexShrink: 0,
-            }}>
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: 1.5,
+                overflow: "hidden",
+                border: "2px solid",
+                borderColor: "success.main",
+                flexShrink: 0,
+              }}
+            >
               <img src={preview} alt="Fotografija" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </Box>
             <Box sx={{ flex: 1 }}>
@@ -183,10 +267,34 @@ export default function PhotoUpload({ onPhotoChange }) {
           </Button>
         )}
 
-        {error && <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>{error}</Alert>}
+        {error && (
+          <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
       </Box>
 
       <input ref={inputRef} type="file" accept="image/*" onChange={handleFileChange} style={{ display: "none" }} />
+
+      {/* Guidelines image lightbox */}
+      <Dialog open={guidelinesZoom} onClose={() => setGuidelinesZoom(false)} maxWidth="lg">
+        <Box sx={{ position: "relative" }}>
+          <IconButton
+            onClick={() => setGuidelinesZoom(false)}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 1,
+              background: "rgba(255,255,255,0.9)",
+              "&:hover": { background: "white" },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <Box component="img" src="/photo-guidelines.png" alt="Primjeri prihvatljivih i neprihvatljivih fotografija" sx={{ width: "100%", height: "auto", display: "block" }} />
+        </Box>
+      </Dialog>
 
       {/* Crop Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
@@ -201,14 +309,7 @@ export default function PhotoUpload({ onPhotoChange }) {
           {imgSrc && (
             <>
               <Box sx={{ display: "flex", justifyContent: "center", mb: 2, background: "#f5f5f5", borderRadius: 2, p: 1, minHeight: 300, alignItems: "center" }}>
-                <ReactCrop
-                  crop={crop}
-                  onChange={(_, pct) => setCrop(pct)}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  aspect={1}
-                  circularCrop={false}
-                  minWidth={50}
-                >
+                <ReactCrop crop={crop} onChange={(_, pct) => setCrop(pct)} onComplete={(c) => setCompletedCrop(c)} aspect={1} circularCrop={false} minWidth={50}>
                   <img
                     ref={imgRef}
                     src={imgSrc}
@@ -226,19 +327,14 @@ export default function PhotoUpload({ onPhotoChange }) {
 
               {/* Controls */}
               <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>Rotacija</Typography>
-                <IconButton size="small" onClick={() => setRotation(r => r - 90)}>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
+                  Rotacija
+                </Typography>
+                <IconButton size="small" onClick={() => setRotation((r) => r - 90)}>
                   <RotateLeftIcon />
                 </IconButton>
-                <Slider
-                  value={rotation}
-                  onChange={(_, v) => setRotation(v)}
-                  min={-180}
-                  max={180}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
-                <IconButton size="small" onClick={() => setRotation(r => r + 90)}>
+                <Slider value={rotation} onChange={(_, v) => setRotation(v)} min={-180} max={180} size="small" sx={{ flex: 1 }} />
+                <IconButton size="small" onClick={() => setRotation((r) => r + 90)}>
                   <RotateRightIcon />
                 </IconButton>
                 <Typography variant="caption" sx={{ minWidth: 36, textAlign: "right" }}>
@@ -247,16 +343,10 @@ export default function PhotoUpload({ onPhotoChange }) {
               </Box>
 
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>Zoom</Typography>
-                <Slider
-                  value={scale}
-                  onChange={(_, v) => setScale(v)}
-                  min={0.5}
-                  max={3}
-                  step={0.05}
-                  size="small"
-                  sx={{ flex: 1 }}
-                />
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
+                  Zoom
+                </Typography>
+                <Slider value={scale} onChange={(_, v) => setScale(v)} min={0.5} max={3} step={0.05} size="small" sx={{ flex: 1 }} />
                 <Typography variant="caption" sx={{ minWidth: 36, textAlign: "right" }}>
                   {Math.round(scale * 100)}%
                 </Typography>

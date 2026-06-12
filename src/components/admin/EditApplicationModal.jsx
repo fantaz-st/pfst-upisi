@@ -13,6 +13,7 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
+import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
@@ -20,9 +21,12 @@ import Typography from "@mui/material/Typography";
 import RadioGroup from "@mui/material/RadioGroup";
 import Radio from "@mui/material/Radio";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import { studyPrograms, studyTypes, enrollmentTypeOptions } from "@/lib/applications/config";
+import Stack from "@mui/material/Stack";
+import Checkbox from "@mui/material/Checkbox";
+import { studyPrograms, studyTypes, enrollmentTypeOptions, documentTypeLabels, applicationConfigs, enrollmentTypeRequiresTuition } from "@/lib/applications/config";
 import { updateApplication, uploadDocuments } from "@/lib/applications/actions";
 import PhotoUpload from "@/components/application/PhotoUpload";
+import DocumentUpload from "@/components/application/DocumentUpload";
 
 const genderOptions = [
   { value: "muški", label: "Muški" },
@@ -30,18 +34,20 @@ const genderOptions = [
   { value: "ostalo", label: "Ostalo" },
 ];
 
-const maritalOptions = [
-  "Neoženjen / Neudana",
-  "Oženjen / Udana",
-  "Razveden/a",
-  "Udovac / Udovica",
-];
+const maritalOptions = ["Neoženjen / Neudana", "Oženjen / Udana", "Razveden/a", "Udovac / Udovica"];
 
 export default function EditApplicationModal({ open, onClose, application, intakeSlug, intakeStudyLevel }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState({});
+  const [combinedMode, setCombinedMode] = useState(false);
+  const [combinedFile, setCombinedFile] = useState(null);
+
+  const existingDocs = application.application_documents || [];
+  const existingPhoto = existingDocs.find((d) => d.document_type === "photo");
+  const config = applicationConfigs[intakeStudyLevel] ?? applicationConfigs[intakeSlug] ?? { requiredDocuments: [] };
   const [formData, setFormData] = useState({
     jmbag: application.jmbag || "",
     first_name: application.first_name || "",
@@ -73,9 +79,15 @@ export default function EditApplicationModal({ open, onClose, application, intak
     enrollment_type: application.enrollment_type || null,
   });
 
-  const allPrograms = (studyPrograms[intakeStudyLevel] || studyPrograms[intakeSlug]) || [
-    ...studyPrograms.prijediplomski,
-    ...studyPrograms.diplomski,
+  const allPrograms = studyPrograms[intakeStudyLevel] || studyPrograms[intakeSlug] || [...studyPrograms.prijediplomski, ...studyPrograms.diplomski];
+
+  const needsTuitionPayment = formData.study_type === "izvanredni" || (formData.study_type === "redoviti" && enrollmentTypeRequiresTuition(formData.enrollment_type));
+  const needsOccupationalMedicine = formData.program !== "pm";
+
+  const dynamicRequiredDocuments = [
+    ...config.requiredDocuments,
+    ...(needsTuitionPayment ? ["tuition_payment_confirmation"] : []),
+    ...(needsOccupationalMedicine ? ["occupational_medicine_certificate"] : []),
   ];
 
   const handleChange = (field, value) => {
@@ -94,8 +106,15 @@ export default function EditApplicationModal({ open, onClose, application, intak
       return;
     }
 
-    if (newPhoto) {
-      await uploadDocuments(application.id, [{ documentType: "photo", file: newPhoto }]);
+    const filesToUpload = [
+      ...(newPhoto ? [{ documentType: "photo", file: newPhoto }] : []),
+      ...(combinedMode && combinedFile
+        ? [{ documentType: "combined_documents", file: combinedFile }]
+        : Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))),
+    ];
+
+    if (filesToUpload.length > 0) {
+      await uploadDocuments(application.id, filesToUpload);
     }
 
     router.refresh();
@@ -162,7 +181,9 @@ export default function EditApplicationModal({ open, onClose, application, intak
               <InputLabel>Spol</InputLabel>
               <Select value={formData.gender} label="Spol" onChange={(e) => handleChange("gender", e.target.value)}>
                 {genderOptions.map((o) => (
-                  <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                  <MenuItem key={o.value} value={o.value}>
+                    {o.label}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -172,7 +193,9 @@ export default function EditApplicationModal({ open, onClose, application, intak
               <InputLabel>Bračno stanje</InputLabel>
               <Select value={formData.marital_status} label="Bračno stanje" onChange={(e) => handleChange("marital_status", e.target.value)}>
                 {maritalOptions.map((o) => (
-                  <MenuItem key={o} value={o}>{o}</MenuItem>
+                  <MenuItem key={o} value={o}>
+                    {o}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -197,7 +220,9 @@ export default function EditApplicationModal({ open, onClose, application, intak
         </Typography>
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid size={{ xs: 12 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)" }}>Otac</Typography>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)" }}>
+              Otac
+            </Typography>
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <TextField label="Ime oca" value={formData.father_name} onChange={(e) => handleChange("father_name", e.target.value)} fullWidth size="small" />
@@ -209,7 +234,9 @@ export default function EditApplicationModal({ open, onClose, application, intak
             <TextField label="Adresa oca" value={formData.father_address} onChange={(e) => handleChange("father_address", e.target.value)} fullWidth size="small" />
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)" }}>Majka</Typography>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)" }}>
+              Majka
+            </Typography>
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <TextField label="Ime majke" value={formData.mother_name} onChange={(e) => handleChange("mother_name", e.target.value)} fullWidth size="small" />
@@ -232,7 +259,9 @@ export default function EditApplicationModal({ open, onClose, application, intak
               <InputLabel>Studij</InputLabel>
               <Select value={formData.program} label="Studij" onChange={(e) => handleChange("program", e.target.value)}>
                 {allPrograms.map((prog) => (
-                  <MenuItem key={prog.value} value={prog.value}>{prog.label}</MenuItem>
+                  <MenuItem key={prog.value} value={prog.value}>
+                    {prog.label}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -242,7 +271,9 @@ export default function EditApplicationModal({ open, onClose, application, intak
               <InputLabel>Vrsta studija</InputLabel>
               <Select value={formData.study_type} label="Vrsta studija" onChange={(e) => handleChange("study_type", e.target.value)}>
                 {studyTypes.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>
+                  <MenuItem key={type.value} value={type.value}>
+                    {type.label}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -262,7 +293,11 @@ export default function EditApplicationModal({ open, onClose, application, intak
                     key={opt.value}
                     value={opt.value}
                     control={<Radio size="small" />}
-                    label={<Typography variant="caption" sx={{ lineHeight: 1.4 }}>{opt.label}</Typography>}
+                    label={
+                      <Typography variant="caption" sx={{ lineHeight: 1.4 }}>
+                        {opt.label}
+                      </Typography>
+                    }
                     sx={{ alignItems: "flex-start", mb: 0.25, "& .MuiRadio-root": { mt: -0.5, py: 0.25 } }}
                   />
                 ))}
@@ -315,7 +350,70 @@ export default function EditApplicationModal({ open, onClose, application, intak
         <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--blue-dark)", mb: 1.5 }}>
           Fotografija pristupnika
         </Typography>
+        {existingPhoto && !newPhoto && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            Fotografija je već učitana ({existingPhoto.file_name}). Učitajte novu samo ako želite zamijeniti.
+          </Alert>
+        )}
         <PhotoUpload onPhotoChange={setNewPhoto} />
+
+        {/* Dokumenti */}
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--blue-dark)", mb: 1.5 }}>
+          Dokumenti
+        </Typography>
+        <Stack spacing={2}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={combinedMode}
+                onChange={(e) => {
+                  setCombinedMode(e.target.checked);
+                  setUploadedFiles({});
+                  setCombinedFile(null);
+                }}
+              />
+            }
+            label={<Typography variant="body2">Svi dokumenti su skenirani u jednu datoteku</Typography>}
+          />
+
+          {combinedMode ? (
+            <Box>
+              {(() => {
+                const existingCombined = existingDocs.find((d) => d.document_type === "combined_documents");
+                return (
+                  existingCombined &&
+                  !combinedFile && (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      Datoteka sa svim dokumentima je već učitana ({existingCombined.file_name}). Učitajte novu samo ako želite zamijeniti.
+                    </Alert>
+                  )
+                );
+              })()}
+              <DocumentUpload documentType="combined_documents" label="Svi dokumenti (jedna datoteka)" required={false} onFileChange={setCombinedFile} />
+            </Box>
+          ) : (
+            [
+              ...new Set([
+                ...existingDocs.filter((d) => d.document_type !== "photo" && d.document_type !== "combined_documents").map((d) => d.document_type),
+                ...dynamicRequiredDocuments,
+              ]),
+            ].map((docType) => {
+              const existingDoc = existingDocs.find((d) => d.document_type === docType);
+              const label = documentTypeLabels[docType] || docType;
+              return (
+                <Box key={docType}>
+                  {existingDoc && !uploadedFiles[docType] && (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      {label} je već učitan ({existingDoc.file_name}). Učitajte novi samo ako želite zamijeniti.
+                    </Alert>
+                  )}
+                  <DocumentUpload documentType={docType} label={label} required={false} onFileChange={(file) => setUploadedFiles((prev) => ({ ...prev, [docType]: file }))} />
+                </Box>
+              );
+            })
+          )}
+        </Stack>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
