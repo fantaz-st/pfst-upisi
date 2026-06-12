@@ -13,7 +13,7 @@ export default async function EditApplicationPage({ params }) {
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")
-    .select(`*, applications ( *, intakes ( title, academic_year, slug ) )`)
+    .select(`*, applications ( *, intakes ( title, academic_year, slug, study_level ), application_documents ( * ) )`)
     .eq("token", token)
     .single();
 
@@ -34,9 +34,7 @@ export default async function EditApplicationPage({ params }) {
             <div className={styles.expiredCard}>
               <LockClockIcon sx={{ fontSize: 48, color: "var(--gray-300)", mb: 2 }} />
               <h2 className={styles.expiredTitle}>Link je istekao</h2>
-              <p className={styles.expiredText}>
-                Ovaj link za izmjenu prijave više nije aktivan. Molimo kontaktirajte referadu fakulteta.
-              </p>
+              <p className={styles.expiredText}>Ovaj link za izmjenu prijave više nije aktivan. Molimo kontaktirajte referadu fakulteta.</p>
             </div>
           </Container>
         </div>

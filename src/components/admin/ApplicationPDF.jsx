@@ -11,7 +11,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#0f385c",
     borderBottomStyle: "solid",
   },
-  universityName: { fontSize: 15, fontWeight: 700, color: "#0f385c", marginBottom: 3 },
   facultyName: { fontSize: 10, color: "#666666", marginBottom: 8, textAlign: "center" },
   documentTitle: { fontSize: 18, fontWeight: 700, color: "#058cc4", letterSpacing: 0.8, textAlign: "center" },
   infoBar: {
@@ -28,7 +27,7 @@ const styles = StyleSheet.create({
   infoItem: { flexDirection: "column", gap: 2 },
   infoLabel: { fontSize: 7, color: "#888888", textTransform: "uppercase", letterSpacing: 0.5 },
   infoValue: { fontSize: 9, fontWeight: 700, color: "#0f385c" },
-  section: { marginBottom: 14 },
+  section: { marginBottom: 22 },
   sectionTitle: {
     fontSize: 9,
     fontWeight: 700,
@@ -110,6 +109,13 @@ const DataRow = ({ label, value, bold = false }) => (
   </View>
 );
 
+const enrollmentTypeLabels = {
+  1: "PRVI put upisujem I. godinu studija kao student u redovitom statusu",
+  2: "DRUGI put upisujem I. godinu studija kao student u redovitom statusu",
+  3: "Upisujem I. godinu studija kao student u redovitom statusu, ali sam već studirao/la na dva ili više drugih studijskih programa iste razine kao student u redovitom statusu",
+  4: "Upisujem I. godinu studija kao student u redovitom statusu, ali sam završio/la studij iste razine kao student u redovitom statusu",
+};
+
 export default function ApplicationPDF({ application, programLabel, studyTypeLabel, statusLabel, photoUrl }) {
   Font.register({
     family: "Roboto",
@@ -125,28 +131,31 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.facultyName}>Sveučilište u Splitu, POMORSKI FAKULTET</Text>
-          {/* <Text style={styles.universityName}>POMORSKI FAKULTET</Text> */}
+          <Text style={styles.facultyName}>Sveučilište u Splitu, Pomorski fakultet</Text>
           <Text style={styles.documentTitle}>UPISNI LIST</Text>
         </View>
 
-        {/* Info Bar — status kao običan tekst */}
+        {/* Info Bar */}
         <View style={styles.infoBar}>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Broj prijave</Text>
-            <Text style={styles.infoValue}>{application.application_number}</Text>
+            <Text style={styles.infoLabel}>JMBAG</Text>
+            <Text style={styles.infoValue}>{application.jmbag || "—"}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Datum prijave</Text>
-            <Text style={styles.infoValue}>{formatDate(application.created_at)}</Text>
+            <Text style={styles.infoLabel}>Studij</Text>
+            <Text style={styles.infoValue}>{application.program?.toUpperCase() || "—"}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Razina studija</Text>
+            <Text style={styles.infoValue}>{application.intakes?.study_level === "diplomski" ? "D" : "PD"}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Status</Text>
-            <Text style={styles.infoValue}>{statusLabel}</Text>
+            <Text style={styles.infoValue}>{studyTypeLabel || "—"}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Ak. godina</Text>
-            <Text style={styles.infoValue}>{application.intakes?.academic_year || "—"}</Text>
+            <Text style={styles.infoLabel}>Godina studiranja</Text>
+            <Text style={styles.infoValue}>1.</Text>
           </View>
         </View>
 
@@ -166,7 +175,6 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <DataRow label="JMBAG" value="  " />
                 <DataRow label="Ime i prezime" value={`${application.first_name} ${application.last_name}`} bold />
                 <DataRow label="OIB" value={application.oib} />
                 <DataRow label="Datum rođenja" value={formatDate(application.birth_date)} />
@@ -223,16 +231,41 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
           </View>
         </View>
 
+        {/* Privola */}
+        <View style={{ marginBottom: 10 }}>
+          <Text style={styles.sectionTitle}>PRIVOLA</Text>
+          <Text style={{ fontSize: 7, lineHeight: 1.35, color: "#0f172a", marginBottom: 4 }}>
+            Na temelju točke 32. Opće uredbe o zaštiti podataka, EC 2016/679 i odredbi Zakona o provedbi Opće uredbe o zaštiti osobnih podataka ("Narodne novine" broj 42/18),
+            svojim potpisom dajem <Text style={{ fontWeight: 700 }}>PRIVOLU</Text> Pomorskom fakultetu u Splitu da u svrhu ostvarivanja mojih prava iz studentskog standarda i
+            službene komunikacije tijekom studiranja koristi moje osobne podatke.
+          </Text>
+          <Text style={{ fontSize: 7, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>Napomena:</Text>
+          <Text style={{ fontSize: 7, lineHeight: 1.35, color: "#64748b" }}>
+            Navedeni osobni podaci koristit će se isključivo u gore navedenu svrhu u skladu s odredbama Opće uredbe o zaštiti podataka EC 2016/679, te se u druge svrhe ne smiju
+            koristiti bez pisane privole osobe na koju se odnose. Daljnja obrada osobnih podataka u povijesne, statističke ili znanstvene svrhe neće se smatrati nepodudarnom, pod
+            uvjetom da se poduzmu odgovarajuće zaštitne mjere. Student ima pravo u svako doba odustati od dane privole i zatražiti prestanak daljnje obrade, na način da ispuni za
+            to propisani obrazac te ga dostavi voditelju obrade osobnih podataka.
+          </Text>
+        </View>
+
+        {/* Izjava o upisu */}
+        {application.enrollment_type && (
+          <View style={{ marginBottom: 14 }}>
+            <Text style={styles.sectionTitle}>IZJAVA O UPISU</Text>
+            <Text style={{ fontSize: 8, color: "#0f172a", lineHeight: 1.4 }}>{enrollmentTypeLabels[application.enrollment_type]}</Text>
+          </View>
+        )}
+
         {/* Footer */}
         <View style={styles.footer}>
           <View>
-            <View style={styles.signatureLine}>
+            {/* <View style={styles.signatureLine}>
               <Text>Potpis kandidata</Text>
-            </View>
+            </View> */}
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Sveučilište u Splitu · Pomorski fakultet</Text>
-            <Text style={styles.footerText}>Datum ispisa: {formatDate(new Date().toISOString())}</Text>
+            <Text style={styles.footerText}>Datum upisa: {formatDate(new Date().toISOString())}</Text>
           </View>
         </View>
       </Page>

@@ -8,7 +8,7 @@ import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { applicationStatuses, getProgramLabel, studyTypes } from "@/lib/applications/config";
+import { applicationStatuses, getProgramLabel, studyTypes, enrollmentTypeOptions } from "@/lib/applications/config";
 import ApplicationStatusControl from "@/components/admin/ApplicationStatusControl";
 import ApplicationNotes from "@/components/admin/ApplicationNotes";
 import DocumentsList from "@/components/admin/DocumentsList";
@@ -32,11 +32,13 @@ export default async function ApplicationDetailPage({ params }) {
   const hasAccess = await canAccessApplication(application.program, application.intake_id);
   if (!hasAccess) redirect("/admin/moje-prijave");
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const statusConfig = applicationStatuses[application.status] ?? { label: application.status, color: "default" };
   const programLabel = getProgramLabel(application.program);
-  const studyTypeLabel = studyTypes.find(t => t.value === application.study_type)?.label || application.study_type;
-  const otherDocs = application.application_documents?.filter(d => d.document_type !== "photo") ?? [];
+  const studyTypeLabel = studyTypes.find((t) => t.value === application.study_type)?.label || application.study_type;
+  const otherDocs = application.application_documents?.filter((d) => d.document_type !== "photo") ?? [];
 
   const InfoRow = ({ label, value }) => (
     <div className={styles.infoRow}>
@@ -69,38 +71,24 @@ export default async function ApplicationDetailPage({ params }) {
           <Box sx={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--blue-dark)", letterSpacing: "-0.02em" }}>
             {application.first_name} {application.last_name}
           </Box>
-          <Box sx={{ fontSize: "0.82rem", fontFamily: "monospace", color: "var(--gray-400)", mt: 0.25 }}>
-            {application.application_number}
-          </Box>
+          <Box sx={{ fontSize: "0.82rem", fontFamily: "monospace", color: "var(--gray-400)", mt: 0.25 }}>{application.application_number}</Box>
         </Box>
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
           <Chip label={statusConfig.label} color={statusConfig.color} sx={{ fontWeight: 700 }} />
-          <ApplicationActions
-            application={application}
-            intakeSlug={application.intakes?.slug}
-            intakeStudyLevel={application.intakes?.study_level}
-          />
+          <ApplicationActions application={application} intakeSlug={application.intakes?.slug} intakeStudyLevel={application.intakes?.study_level} />
         </Box>
       </Box>
 
       <Grid container spacing={2}>
         {/* Left */}
         <Grid size={{ xs: 12, md: 8 }}>
-
-          {/* Podaci o studiju */}
-          <div className={styles.sectionPaper}>
-            <div className={styles.sectionTitle}>Podaci o studiju</div>
-            <InfoRow label="Studij" value={programLabel} />
-            <InfoRow label="Vrsta studiranja" value={studyTypeLabel} />
-            <InfoRow label="Plasman na rang listi" value={application.ranking_score} />
-          </div>
-
           {/* Osobni podaci */}
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Osobni podaci</div>
             <Box sx={{ display: "flex", gap: 2.5, mb: 2 }}>
               <ApplicantPhoto documents={application.application_documents} />
               <Box sx={{ flex: 1 }}>
+                <InfoRow label="JMBAG" value={application.jmbag} />
                 <InfoRow label="Email" value={application.email} />
                 <InfoRow label="Mobitel" value={application.phone} />
                 <InfoRow label="OIB" value={application.oib} />
@@ -113,6 +101,15 @@ export default async function ApplicationDetailPage({ params }) {
                 <InfoRow label="Grad" value={`${application.postal_code ?? ""} ${application.city ?? ""}`.trim()} />
               </Box>
             </Box>
+          </div>
+
+          {/* Podaci o studiju */}
+          <div className={styles.sectionPaper}>
+            <div className={styles.sectionTitle}>Podaci o studiju</div>
+            <InfoRow label="Studij" value={programLabel} />
+            <InfoRow label="Vrsta studiranja" value={studyTypeLabel} />
+            <InfoRow label="Plasman na rang listi" value={application.ranking_score} />
+            <InfoRow label="Izjava o upisu" value={application.enrollment_type ? enrollmentTypeOptions.find((o) => o.value === application.enrollment_type)?.label : null} />
           </div>
 
           {/* Roditelji */}
@@ -148,7 +145,7 @@ export default async function ApplicationDetailPage({ params }) {
         <Grid size={{ xs: 12, md: 4 }}>
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Promjena statusa</div>
-            <ApplicationStatusControl applicationId={application.id} currentStatus={application.status} userId={user?.id} />
+            <ApplicationStatusControl applicationId={application.id} currentStatus={application.status} currentJmbag={application.jmbag} userId={user?.id} />
           </div>
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Interne bilješke</div>

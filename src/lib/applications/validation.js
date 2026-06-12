@@ -14,6 +14,10 @@ function validateOib(oib) {
   return check === parseInt(oib[10]);
 }
 
+export const enrollmentSchema = z.object({
+  enrollment_type: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.null()]).optional(),
+});
+
 export const personalInfoSchema = z.object({
   first_name: z.string().min(2, "Ime mora imati najmanje 2 znaka"),
   last_name: z.string().min(2, "Prezime mora imati najmanje 2 znaka"),
@@ -56,4 +60,5 @@ export const consentSchema = z.object({
 export const fullApplicationSchema = personalInfoSchema
   .merge(parentsSchema)
   .merge(educationSchema)
+  .merge(enrollmentSchema)
   .merge(consentSchema);

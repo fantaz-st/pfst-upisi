@@ -32,7 +32,9 @@ import { fullApplicationSchema } from "@/lib/applications/validation";
 import { submitApplication, requestEditLinkForExisting } from "@/lib/applications/actions";
 import DocumentUpload from "./DocumentUpload";
 import PhotoUpload from "./PhotoUpload";
-import { applicationConfigs, documentTypeLabels, studyPrograms, studyTypes } from "@/lib/applications/config";
+import { applicationConfigs, documentTypeLabels, studyPrograms, studyTypes, enrollmentTypeOptions, enrollmentTypeRequiresTuition } from "@/lib/applications/config";
+import RadioGroup from "@mui/material/RadioGroup";
+import Radio from "@mui/material/Radio";
 import styles from "./ApplicationForm.module.css";
 
 const genderOptions = [
@@ -53,6 +55,8 @@ export default function ApplicationForm({ intake }) {
   const [pendingFormData, setPendingFormData] = useState(null);
   const [linkSent, setLinkSent] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
+  const [combinedMode, setCombinedMode] = useState(false);
+  const [combinedFile, setCombinedFile] = useState(null);
 
   const config = applicationConfigs[intake.study_level] ??
     applicationConfigs[intake.slug] ?? {
@@ -65,6 +69,7 @@ export default function ApplicationForm({ intake }) {
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm({
     resolver: zodResolver(fullApplicationSchema),
     defaultValues: {
@@ -94,43 +99,25 @@ export default function ApplicationForm({ intake }) {
       previous_completion_year: "",
       other_education: "",
       ranking_score: "",
+      enrollment_type: null,
       consent: false,
     },
   });
 
-  const fillTestData = () => {
-    // Osobni podaci
-    setValue("first_name", "Čedomir");
-    setValue("last_name", "Babić");
-    setValue("email", "cbabic.st@gmail.com");
-    setValue("phone", "+385997973959");
-    setValue("oib", "71233233747");
-    setValue("birth_date", "1988-02-06");
-    setValue("birth_place", "Split");
-    setValue("gender", "muški");
-    setValue("marital_status", "Oženjen / Udana");
-    setValue("citizenship", "hrvatsko");
-    setValue("address", "Vinkovačka 45");
-    setValue("city", "Split");
-    setValue("postal_code", "21000");
-    // Studij
-    setValue("program", studyPrograms[intake.study_level]?.[0]?.value || "bs");
-    setValue("study_type", "redoviti");
-    // Roditelji
-    setValue("father_name", "Ante");
-    setValue("father_occupation", "Vozač");
-    setValue("father_address", "Vinkovačka 45, Split");
-    setValue("mother_name", "Lucija");
-    setValue("mother_occupation", "Upravni referent");
-    setValue("mother_address", "Vinkovačka 45, Split");
-    // Obrazovanje
-    setValue("previous_institution", "Elektrotehnička škola Split");
-    setValue("previous_program", "Tehničar za računalstvo");
-    setValue("previous_completion_year", "2005");
-    setValue("other_education", "");
-    setValue("ranking_score", "1");
-    setValue("consent", true);
-  };
+  const watchedStudyType = watch("study_type");
+  const watchedProgram = watch("program");
+  const watchedEnrollmentType = watch("enrollment_type");
+
+  const showEnrollmentDeclaration = watchedStudyType === "redoviti";
+  const needsTuitionPayment = watchedStudyType === "izvanredni" || (watchedStudyType === "redoviti" && enrollmentTypeRequiresTuition(watchedEnrollmentType));
+  const needsOccupationalMedicine = watchedProgram !== "pm";
+
+  // Dinamička lista obaveznih dokumenata
+  const dynamicRequiredDocuments = [
+    ...config.requiredDocuments,
+    ...(needsTuitionPayment ? ["tuition_payment_confirmation"] : []),
+    ...(needsOccupationalMedicine ? ["occupational_medicine_certificate"] : []),
+  ];
 
   const doSubmit = async (data, force = false) => {
     setIsSubmitting(true);
@@ -154,7 +141,12 @@ export default function ApplicationForm({ intake }) {
 
       if (result.applicationId) {
         const { uploadDocuments } = await import("@/lib/applications/actions");
-        const filesToUpload = [{ documentType: "photo", file: photo }, ...Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))];
+        const filesToUpload = combinedMode
+          ? [
+              { documentType: "photo", file: photo },
+              { documentType: "combined_documents", file: combinedFile },
+            ]
+          : [{ documentType: "photo", file: photo }, ...Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))];
         await uploadDocuments(result.applicationId, filesToUpload);
       }
 
@@ -171,10 +163,22 @@ export default function ApplicationForm({ intake }) {
       return;
     }
 
-    const missingDocs = config.requiredDocuments.filter((docType) => !uploadedFiles[docType]);
-    if (missingDocs.length > 0) {
-      setServerError(`Nedostaju obavezni dokumenti: ${missingDocs.map((d) => documentTypeLabels[d]).join(", ")}`);
+    if (showEnrollmentDeclaration && !data.enrollment_type) {
+      setServerError("Molimo odaberite izjavu o upisu.");
       return;
+    }
+
+    if (combinedMode) {
+      if (!combinedFile) {
+        setServerError("Molimo učitajte datoteku sa svim dokumentima.");
+        return;
+      }
+    } else {
+      const missingDocs = dynamicRequiredDocuments.filter((docType) => !uploadedFiles[docType]);
+      if (missingDocs.length > 0) {
+        setServerError(`Nedostaju obavezni dokumenti: ${missingDocs.map((d) => documentTypeLabels[d]).join(", ")}`);
+        return;
+      }
     }
 
     await doSubmit(data, false);
@@ -219,7 +223,15 @@ export default function ApplicationForm({ intake }) {
         <Alert severity="info" className={styles.testAlert}>
           <Box className={styles.testAlertContent}>
             <Typography variant="body2">Testni način</Typography>
-            <Button onClick={fillTestData} variant="outlined" size="small" sx={{ ml: 2 }}>
+            <Button
+              onClick={async () => {
+                const { default: fillTestData } = await import("./fillTestData");
+                fillTestData(setValue, intake);
+              }}
+              variant="outlined"
+              size="small"
+              sx={{ ml: 2 }}
+            >
               Popuni test podatke
             </Button>
           </Box>
@@ -283,6 +295,36 @@ export default function ApplicationForm({ intake }) {
               )}
             />
           </Grid>
+
+          {showEnrollmentDeclaration && (
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)", mb: 1 }}>
+                Izjava o upisu *
+              </Typography>
+
+              <Controller
+                name="enrollment_type"
+                control={control}
+                render={({ field }) => (
+                  <RadioGroup value={field.value ?? ""} onChange={(e) => field.onChange(Number(e.target.value))}>
+                    {enrollmentTypeOptions.map((opt) => (
+                      <FormControlLabel
+                        key={opt.value}
+                        value={opt.value}
+                        control={<Radio size="small" />}
+                        label={
+                          <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+                            {opt.label}
+                          </Typography>
+                        }
+                        sx={{ alignItems: "flex-start", mb: 0.5, "& .MuiRadio-root": { mt: -0.5 } }}
+                      />
+                    ))}
+                  </RadioGroup>
+                )}
+              />
+            </Grid>
+          )}
         </Grid>
       </Paper>
 
@@ -560,15 +602,34 @@ export default function ApplicationForm({ intake }) {
         </Typography>
         <Stack spacing={2}>
           <PhotoUpload onPhotoChange={setPhoto} />
-          {config.requiredDocuments.map((docType) => (
-            <DocumentUpload
-              key={docType}
-              documentType={docType}
-              label={documentTypeLabels[docType]}
-              required
-              onFileChange={(file) => setUploadedFiles((prev) => ({ ...prev, [docType]: file }))}
-            />
-          ))}
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={combinedMode}
+                onChange={(e) => {
+                  setCombinedMode(e.target.checked);
+                  setUploadedFiles({});
+                  setCombinedFile(null);
+                }}
+              />
+            }
+            label={<Typography variant="body2">Svi dokumenti su skenirani u jednu datoteku</Typography>}
+          />
+
+          {combinedMode ? (
+            <DocumentUpload documentType="combined_documents" label="Svi dokumenti (jedna datoteka)" required onFileChange={setCombinedFile} />
+          ) : (
+            dynamicRequiredDocuments.map((docType) => (
+              <DocumentUpload
+                key={docType}
+                documentType={docType}
+                label={documentTypeLabels[docType]}
+                required
+                onFileChange={(file) => setUploadedFiles((prev) => ({ ...prev, [docType]: file }))}
+              />
+            ))
+          )}
         </Stack>
       </Paper>
 
@@ -582,10 +643,22 @@ export default function ApplicationForm({ intake }) {
               <FormControlLabel
                 control={<Checkbox {...field} checked={field.value} color="primary" />}
                 label={
-                  <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-                    Potvrđujem da su svi uneseni podaci točni i da su priloženi dokumenti autentični. Suglasan/na sam s obradom osobnih podataka u svrhu upisa na Pomorski fakultet
-                    Split, sukladno Uredbi (EU) 2016/679 (GDPR).
-                  </Typography>
+                  <Box>
+                    <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 1.5 }}>
+                      Na temelju točke 32. Opće uredbe o zaštiti podataka, EC 2016/679 i odredbi Zakona o provedbi Opće uredbe o zaštiti osobnih podataka ("Narodne novine" broj
+                      42/18), svojim potpisom dajem <strong>PRIVOLU</strong> Pomorskom fakultetu u Splitu da u svrhu ostvarivanja mojih prava iz studentskog standarda i službene
+                      komunikacije tijekom studiranja koristi moje osobne podatke.
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      Napomena:
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.6, color: "var(--gray-600)" }}>
+                      Navedeni osobni podaci koristit će se isključivo u gore navedenu svrhu u skladu s odredbama Opće uredbe o zaštiti podataka EC 2016/679, te se u druge svrhe ne
+                      smiju koristiti bez pisane privole osobe na koju se odnose. Daljnja obrada osobnih podataka u povijesne, statističke ili znanstvene svrhe neće se smatrati
+                      nepodudarnom, pod uvjetom da se poduzmu odgovarajuće zaštitne mjere. Student ima pravo u svako doba odustati od dane privole i zatražiti prestanak daljnje
+                      obrade, na način da ispuni za to propisani obrazac te ga dostavi voditelju obrade osobnih podataka.
+                    </Typography>
+                  </Box>
                 }
               />
               {errors.consent && <FormHelperText error>{errors.consent.message}</FormHelperText>}

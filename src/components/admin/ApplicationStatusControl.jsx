@@ -12,22 +12,29 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { applicationStatuses, statusesWithMessage } from "@/lib/applications/config";
-import { updateApplicationStatus } from "@/lib/applications/actions";
+import { updateApplicationStatus, updateApplication } from "@/lib/applications/actions";
 
-export default function ApplicationStatusControl({ applicationId, currentStatus }) {
+export default function ApplicationStatusControl({ applicationId, currentStatus, currentJmbag }) {
   const [loading, setLoading] = useState(null);
   const [messageModal, setMessageModal] = useState(false);
+  const [jmbagModal, setJmbagModal] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
   const [adminMessage, setAdminMessage] = useState("");
+  const [jmbagInput, setJmbagInput] = useState(currentJmbag || "");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   const statuses = Object.entries(applicationStatuses).filter(([key]) => key !== currentStatus && key !== "submitted");
+
   const handleStatusClick = (statusKey) => {
     setError(null);
     setSuccess(null);
 
-    if (statusesWithMessage.includes(statusKey)) {
+    if (statusKey === "accepted") {
+      setPendingStatus(statusKey);
+      setJmbagInput(currentJmbag || "");
+      setJmbagModal(true);
+    } else if (statusesWithMessage.includes(statusKey)) {
       setPendingStatus(statusKey);
       setMessageModal(true);
     } else {
@@ -49,8 +56,26 @@ export default function ApplicationStatusControl({ applicationId, currentStatus 
 
     setLoading(null);
     setMessageModal(false);
+    setJmbagModal(false);
     setAdminMessage("");
     setPendingStatus(null);
+  };
+
+  const handleAcceptWithJmbag = async () => {
+    setLoading("accepted");
+    setError(null);
+
+    // Spremi JMBAG ako je unesen
+    if (jmbagInput.trim()) {
+      const jmbagResult = await updateApplication(applicationId, { jmbag: jmbagInput.trim() });
+      if (jmbagResult.error) {
+        setError(jmbagResult.error);
+        setLoading(null);
+        return;
+      }
+    }
+
+    await handleStatusChange("accepted");
   };
 
   return (
@@ -108,6 +133,34 @@ export default function ApplicationStatusControl({ applicationId, currentStatus 
             startIcon={loading ? <CircularProgress size={16} /> : null}
           >
             Pošalji obavijest
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* JMBAG Modal for accepted */}
+      <Dialog open={jmbagModal} onClose={() => setJmbagModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontFamily: '"Source Serif 4", serif', fontWeight: 700 }}>Prihvaćanje prijave</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Možete unijeti JMBAG kandidata prije prihvaćanja prijave. Ako ga još nemate, možete ga unijeti i kasnije kroz uređivanje prijave.
+          </Typography>
+          <TextField
+            label="JMBAG"
+            fullWidth
+            value={jmbagInput}
+            onChange={(e) => setJmbagInput(e.target.value)}
+            placeholder="npr. 0191234567"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setJmbagModal(false)}>Odustani</Button>
+          <Button
+            variant="contained"
+            disabled={loading !== null}
+            onClick={handleAcceptWithJmbag}
+            startIcon={loading ? <CircularProgress size={16} /> : null}
+          >
+            Prihvati prijavu
           </Button>
         </DialogActions>
       </Dialog>

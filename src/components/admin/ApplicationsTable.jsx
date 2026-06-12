@@ -28,8 +28,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import SearchIcon from "@mui/icons-material/Search";
 import RestoreIcon from "@mui/icons-material/Restore";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-import { applicationStatuses, getProgramShortCode, studyPrograms } from "@/lib/applications/config";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import EditIcon from "@mui/icons-material/Edit";
+import { applicationStatuses, getProgramShortCode, studyPrograms, statusesWithMessage } from "@/lib/applications/config";
 import { permanentDeleteApplications, restoreApplications } from "@/lib/admin/actions";
+import { bulkUpdateApplicationStatus, softDeleteApplication, bulkSoftDeleteApplications } from "@/lib/applications/actions";
 import styles from "@/app/admin/admin.module.css";
 
 function StatusChip({ status }) {
@@ -38,6 +41,9 @@ function StatusChip({ status }) {
 }
 
 const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski].filter((p, i, self) => i === self.findIndex((x) => x.value === p.value));
+
+// Statusi dostupni za bulk promjenu — isključujemo "accepted" (treba JMBAG po prijavi)
+const bulkStatusOptions = Object.entries(applicationStatuses).filter(([key]) => key !== "accepted");
 
 export default function ApplicationsTable({
   applications = [],
@@ -55,6 +61,16 @@ export default function ApplicationsTable({
   const [error, setError] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Bulk status promjena (active mode)
+  const [bulkStatusModal, setBulkStatusModal] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkMessage, setBulkMessage] = useState("");
+  const [bulkResult, setBulkResult] = useState(null);
+
+  // Brisanje (active mode)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetIds, setDeleteTargetIds] = useState([]);
+
   // ─── Filter & Search ───────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -70,7 +86,9 @@ export default function ApplicationsTable({
   }, [applications, search, statusFilter, programFilter]);
 
   // ─── Bulk selection ────────────────────────────────────
-  const selectableIds = filtered.map((a) => a.id);
+  // U active modu, biraju se samo prijave do kojih admin ima pristup
+  const selectableApps = filtered.filter((a) => !showAccess || a.canAccess !== false);
+  const selectableIds = selectableApps.map((a) => a.id);
   const allSelected = selectableIds.length > 0 && selected.length === selectableIds.length;
   const someSelected = selected.length > 0;
 
@@ -98,6 +116,62 @@ export default function ApplicationsTable({
     else {
       setSelected([]);
       setConfirmOpen(false);
+      router.refresh();
+    }
+    setLoading(null);
+  };
+
+  // ─── Bulk status change (active mode) ──────────────────
+  const handleBulkStatusClick = () => {
+    setBulkStatus("");
+    setBulkMessage("");
+    setBulkResult(null);
+    setBulkStatusModal(true);
+  };
+
+  const handleBulkStatusApply = async () => {
+    if (!bulkStatus) return;
+    setLoading("bulkStatus");
+    setError(null);
+    setBulkResult(null);
+
+    const message = statusesWithMessage.includes(bulkStatus) ? bulkMessage : null;
+    const result = await bulkUpdateApplicationStatus(selected, bulkStatus, message);
+
+    setBulkResult(result);
+    setLoading(null);
+
+    if (result.failed === 0) {
+      setSelected([]);
+      router.refresh();
+    }
+  };
+
+  const handleCloseBulkModal = () => {
+    setBulkStatusModal(false);
+    setBulkStatus("");
+    setBulkMessage("");
+    setBulkResult(null);
+    if (!error) router.refresh();
+  };
+
+  const handleDeleteClick = (ids) => {
+    setDeleteTargetIds(ids);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setLoading("softDelete");
+    setError(null);
+
+    const result = deleteTargetIds.length === 1 ? await softDeleteApplication(deleteTargetIds[0]) : await bulkSoftDeleteApplications(deleteTargetIds);
+
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setSelected((prev) => prev.filter((id) => !deleteTargetIds.includes(id)));
+      setDeleteConfirmOpen(false);
+      setDeleteTargetIds([]);
       router.refresh();
     }
     setLoading(null);
@@ -169,7 +243,7 @@ export default function ApplicationsTable({
         </Alert>
       )}
 
-      {/* ─── Bulk action bar ──────────────────────────── */}
+      {/* ─── Bulk action bar — trash ───────────────────── */}
       {isTrash && someSelected && (
         <Box
           sx={{
@@ -213,15 +287,61 @@ export default function ApplicationsTable({
         </Box>
       )}
 
+      {/* ─── Bulk action bar — active (promjena statusa) ── */}
+      {!isTrash && someSelected && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            mb: 2,
+            px: 2.5,
+            py: 1.5,
+            background: "var(--blue-pale)",
+            border: "1px solid var(--blue-main)",
+            borderRadius: "var(--radius-md)",
+            flexWrap: "wrap",
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--blue-dark)", flex: 1 }}>
+            {selected.length} {selected.length === 1 ? "prijava odabrana" : "prijava odabrano"}
+          </Typography>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={handleBulkStatusClick}
+            disabled={loading !== null}
+            sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}
+          >
+            Promijeni status
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteOutlineOutlinedIcon />}
+            onClick={() => handleDeleteClick(selected)}
+            disabled={loading !== null}
+            sx={{ borderRadius: "100px" }}
+          >
+            Premjesti u otpad
+          </Button>
+          <Button size="small" onClick={() => setSelected([])} disabled={loading !== null}>
+            Poništi odabir
+          </Button>
+        </Box>
+      )}
+
       {/* ─── Tablica ──────────────────────────────────── */}
       <div className={styles.tableCard}>
         <TableContainer>
           <Table size="small">
             <TableHead>
               <TableRow>
-                {isTrash && (
+                {(isTrash || !isTrash) && (
                   <TableCell padding="checkbox">
-                    <Checkbox size="small" checked={allSelected} indeterminate={someSelected && !allSelected} onChange={handleSelectAll} />
+                    <Checkbox size="small" checked={allSelected} indeterminate={someSelected && !allSelected} onChange={handleSelectAll} disabled={selectableIds.length === 0} />
                   </TableCell>
                 )}
                 <TableCell sx={{ width: 48 }}>#</TableCell>
@@ -240,7 +360,7 @@ export default function ApplicationsTable({
             <TableBody>
               {!filtered.length ? (
                 <TableRow>
-                  <TableCell colSpan={isTrash ? 11 : 11} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                  <TableCell colSpan={12} align="center" sx={{ py: 6, color: "text.secondary" }}>
                     {search || statusFilter || programFilter ? "Nema rezultata za odabrane filtere." : "Nema prijava."}
                   </TableCell>
                 </TableRow>
@@ -252,11 +372,9 @@ export default function ApplicationsTable({
 
                   return (
                     <TableRow key={app.id} hover={canAccess} selected={isSelected} sx={{ "&:last-child td": { border: 0 }, opacity: canAccess ? 1 : 0.35 }}>
-                      {isTrash && (
-                        <TableCell padding="checkbox">
-                          <Checkbox size="small" checked={isSelected} onChange={() => handleSelect(app.id)} />
-                        </TableCell>
-                      )}
+                      <TableCell padding="checkbox">
+                        <Checkbox size="small" checked={isSelected} onChange={() => handleSelect(app.id)} disabled={!canAccess} />
+                      </TableCell>
                       <TableCell sx={{ color: "text.disabled", fontWeight: 600, fontSize: "0.8rem" }}>{index + 1}</TableCell>
                       <TableCell>
                         <span className={styles.appNumber}>{app.application_number}</span>
@@ -322,9 +440,21 @@ export default function ApplicationsTable({
                             )}
                           </Box>
                         ) : canAccess ? (
-                          <Button href={`${linkPrefix}/${app.id}`} size="small" variant="outlined" sx={{ borderRadius: "100px", fontSize: "0.75rem" }}>
-                            Pregled
-                          </Button>
+                          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                            <Button href={`${linkPrefix}/${app.id}`} size="small" variant="outlined" sx={{ borderRadius: "100px", fontSize: "0.75rem" }}>
+                              Pregled
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              onClick={() => handleDeleteClick([app.id])}
+                              disabled={loading !== null}
+                              sx={{ borderRadius: "100px", fontSize: "0.75rem", minWidth: 0, px: 1 }}
+                            >
+                              <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+                            </Button>
+                          </Box>
                         ) : (
                           <Chip label="Nema pristup" size="small" disabled sx={{ fontSize: "0.7rem" }} />
                         )}
@@ -362,6 +492,96 @@ export default function ApplicationsTable({
           >
             Trajno obriši
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Confirm soft delete (active) ─────────────── */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>Premjesti u otpad</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Jeste li sigurni da želite premjestiti <strong>{deleteTargetIds.length}</strong> {deleteTargetIds.length === 1 ? "prijavu" : "prijava"} u otpad?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Prijave se mogu vratiti iz otpada kasnije.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)} disabled={loading !== null}>
+            Odustani
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            disabled={loading !== null}
+            startIcon={loading === "softDelete" ? <CircularProgress size={16} /> : <DeleteOutlineOutlinedIcon />}
+          >
+            Premjesti u otpad
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Bulk status change modal ─────────────────── */}
+      <Dialog open={bulkStatusModal} onClose={handleCloseBulkModal} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>
+          Promjena statusa — {selected.length} {selected.length === 1 ? "prijava" : "prijava"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Odaberite novi status koji će se primijeniti na sve odabrane prijave.
+            {statusesWithMessage.length > 0 && ' Za status "Potrebne izmjene" poruka je obavezna i ista za sve odabrane.'}
+          </Typography>
+
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel>Novi status</InputLabel>
+            <Select value={bulkStatus} label="Novi status" onChange={(e) => setBulkStatus(e.target.value)}>
+              {bulkStatusOptions.map(([key, config]) => (
+                <MenuItem key={key} value={key}>
+                  {config.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Status "Prihvaćeno" nije dostupan za bulk promjenu jer zahtijeva unos JMBAG-a po prijavi. Koristite pojedinačni pregled prijave.
+          </Alert>
+
+          {statusesWithMessage.includes(bulkStatus) && (
+            <TextField
+              label="Poruka kandidatima"
+              multiline
+              rows={4}
+              fullWidth
+              value={bulkMessage}
+              onChange={(e) => setBulkMessage(e.target.value)}
+              placeholder="Ova poruka će biti poslana svim odabranim kandidatima zajedno s linkom za izmjenu prijave."
+            />
+          )}
+
+          {bulkResult && (
+            <Alert severity={bulkResult.failed === 0 ? "success" : "warning"} sx={{ mt: 2 }}>
+              Uspješno ažurirano: {bulkResult.success}
+              {bulkResult.failed > 0 && ` · Neuspjelo: ${bulkResult.failed}`}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseBulkModal} disabled={loading !== null}>
+            {bulkResult ? "Zatvori" : "Odustani"}
+          </Button>
+          {!bulkResult && (
+            <Button
+              onClick={handleBulkStatusApply}
+              variant="contained"
+              disabled={loading !== null || !bulkStatus || (statusesWithMessage.includes(bulkStatus) && !bulkMessage.trim())}
+              startIcon={loading === "bulkStatus" ? <CircularProgress size={16} /> : null}
+              sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}
+            >
+              Primijeni
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>
