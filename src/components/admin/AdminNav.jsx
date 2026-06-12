@@ -13,6 +13,7 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
 import AssignmentIcon from "@mui/icons-material/Assignment";
+import DashboardIcon from "@mui/icons-material/Dashboard";
 import ListIcon from "@mui/icons-material/List";
 import SchoolIcon from "@mui/icons-material/School";
 import PeopleIcon from "@mui/icons-material/People";
@@ -113,6 +114,20 @@ export default function AdminNav() {
       <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", mx: 2 }} />
 
       <List sx={{ px: 1.5, pt: 2, flex: 1 }}>
+        {/* Početna */}
+        {(() => {
+          const active = isActive("/admin/pocetna");
+          return (
+            <ListItemButton component={Link} href="/admin/pocetna" sx={navItemSx(active)}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <DashboardIcon sx={iconSx(active)} />
+              </ListItemIcon>
+              <ListItemText primary="Početna" slotProps={{ primary: { sx: textSx(active) } }} />
+              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
+            </ListItemButton>
+          );
+        })()}
+
         {/* Moje prijave — dropdown za regular admin */}
         {!isSuperAdmin && (
           <>
