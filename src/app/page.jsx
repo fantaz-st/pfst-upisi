@@ -51,33 +51,21 @@ export default async function HomePage() {
         </div>
 
         <Container maxWidth="lg" className={styles.heroContent}>
-          <Box className={styles.heroEyebrow}>
-            <span className={styles.heroEyebrowDot} />
-            <span className={styles.heroEyebrowText}>Akademska godina 2026./2027.</span>
-          </Box>
-
           <Typography variant="h1" className={styles.heroTitle}>
-            Upisi na
-            <br />
-            <span className={styles.heroTitleAccent}>Pomorski fakultet</span>
+            Upisi na <span className={styles.heroTitleAccent}>Pomorski fakultet</span>
           </Typography>
 
           <Typography className={styles.heroSubtitle}>Odaberite jednu od ponuđenih prijava i ispunite je. Priložite tražene dokumente i pratite status vaše prijave.</Typography>
 
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 4 }}>
-            <Button href="#upisi" size="large" variant="outlined">
+          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+            <Button href="#upisi" size="large" variant="outlined" className={styles.heroBtnOutline}>
               Pogledaj studije
             </Button>
-            <Button href="/status" size="large" variant="contained">
+            <Button href="/status" size="large" variant="contained" className={styles.heroBtnContained}>
               Provjeri status
             </Button>
           </Box>
         </Container>
-
-        <Box className={styles.scrollIndicator}>
-          <span className={styles.scrollText}>scroll</span>
-          <div className={styles.scrollLine} />
-        </Box>
       </Box>
 
       {/* Status strip */}
