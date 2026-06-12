@@ -7,7 +7,6 @@ export const documentTypeLabels = {
   payment_confirmation: "Potvrda o uplati",
   other: "Ostalo",
 };
-
 export const applicationConfigs = {
   prijediplomski: {
     title: "Prijava za prijediplomski studij",
@@ -32,7 +31,6 @@ export const applicationConfigs = {
     ],
   },
 };
-
 export const applicationStatuses = {
   submitted: { label: "Zaprimljeno", color: "info", candidateCanEdit: true },
   in_review: { label: "U obradi", color: "warning", candidateCanEdit: false },
@@ -41,13 +39,10 @@ export const applicationStatuses = {
   rejected: { label: "Odbijeno", color: "default", candidateCanEdit: false },
   cancelled: { label: "Otkazano", color: "default", candidateCanEdit: false },
 };
-
 // Statuses where admin message modal is shown (sending email to candidate)
 export const statusesWithMessage = ["needs_update"];
-
 // Statuses where email is sent to candidate (no message)
-export const statusesWithEmail = ["accepted", "rejected"];
-
+export const statusesWithEmail = ["in_review", "accepted", "rejected"];
 export const studyPrograms = {
   prijediplomski: [
     { value: "bs", label: "Brodostrojarstvo" },
@@ -63,18 +58,15 @@ export const studyPrograms = {
     { value: "pm", label: "Pomorski Menadžment" },
   ],
 };
-
 export const studyTypes = [
   { value: "redoviti", label: "Redoviti" },
   { value: "izvanredni", label: "Izvanredni" },
 ];
-
 export function getProgramLabel(value) {
   const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski];
   const program = allPrograms.find((p) => p.value === value);
   return program?.label || value?.toUpperCase() || "—";
 }
-
 export function getProgramShortCode(value) {
   return value?.toUpperCase() || "—";
 }

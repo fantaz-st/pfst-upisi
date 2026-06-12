@@ -5,10 +5,11 @@ import { generateApplicationNumber } from "./applicationNumber";
 import { fullApplicationSchema } from "./validation";
 import { sendEmail } from "@/lib/email/send";
 import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno } from "@/lib/email/templates";
-import { getProgramLabel } from "@/lib/applications/config";
+import { emailUObradi } from "@/lib/email/emailUObradi";
+import { getProgramLabel, applicationStatuses } from "@/lib/applications/config";
 import { revalidatePath } from "next/cache";
 
-export async function submitApplication(formData, slug) {
+export async function submitApplication(formData, slug, force = false) {
   const supabase = await createClient();
 
   const { data: intake, error: intakeError } = await supabase
@@ -54,6 +55,33 @@ export async function submitApplication(formData, slug) {
     other_education,
     ranking_score,
   } = parsed.data;
+
+  // ─── Provjera duplikata OIB-a u istom intakeu ───────────
+  if (!force) {
+    const { data: existing } = await supabase
+      .from("applications")
+      .select("id, application_number, program, study_type")
+      .eq("intake_id", intake.id)
+      .eq("oib", oib)
+      .is("deleted_at", null);
+
+    if (existing?.length > 0) {
+      const sameProgram = existing.find((a) => a.program === program && a.study_type === study_type);
+      if (sameProgram) {
+        return {
+          duplicate: true,
+          duplicateType: "same_program",
+          existingApplication: sameProgram,
+        };
+      } else {
+        return {
+          duplicate: true,
+          duplicateType: "different_program",
+          existingApplication: existing[0],
+        };
+      }
+    }
+  }
 
   // ─── Provjera liste kandidata ───────────────────────────
   const { count: listCount } = await supabase
@@ -233,6 +261,15 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
         magicLink,
       });
       await sendEmail({ to: application.email, ...template });
+    } else if (newStatus === "in_review") {
+      const template = emailUObradi({
+        ime: application.first_name,
+        prezime: application.last_name,
+        brojPrijave: application.application_number,
+        studij: programLabel,
+        akademskaGodina,
+      });
+      await sendEmail({ to: application.email, ...template });
     } else if (newStatus === "accepted") {
       const template = emailPrihvaceno({
         ime: application.first_name,
@@ -275,6 +312,13 @@ export async function updateApplicationViaToken(token, data) {
   if (isExpired) return { error: "Link je istekao." };
 
   const application = tokenData.applications;
+
+  // Provjeri može li kandidat trenutno uređivati prijavu
+  const statusConfig = applicationStatuses[application.status];
+  if (!statusConfig?.candidateCanEdit) {
+    return { error: "Vaša prijava je trenutno u statusu koji ne dozvoljava izmjene. Za pomoć kontaktirajte referadu fakulteta." };
+  }
+
   const parsed = fullApplicationSchema.safeParse(data);
   if (!parsed.success) {
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
@@ -363,4 +407,45 @@ export async function checkApplicationStatus(applicationNumber, oib) {
     return { error: "Prijava nije pronađena. Provjerite broj prijave i OIB." };
   }
   return data;
+}
+
+export async function requestEditLinkForExisting(applicationId) {
+  const supabase = await createClient();
+
+  const { data: application } = await supabase.from("applications").select("id, email, first_name, last_name, application_number").eq("id", applicationId).single();
+
+  if (!application) return { error: "Prijava nije pronađena." };
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+
+  const { data: tokenData, error: tokenError } = await supabase
+    .from("application_edit_tokens")
+    .insert({
+      application_id: applicationId,
+      message: "Zatražili ste izmjenu vlastite prijave putem obrasca za prijavu.",
+      expires_at: expiresAt.toISOString(),
+    })
+    .select()
+    .single();
+
+  if (tokenError) return { error: tokenError.message };
+
+  const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/prijava/uredi/${tokenData.token}`;
+
+  try {
+    const template = emailPotrebneIzmjene({
+      ime: application.first_name,
+      prezime: application.last_name,
+      brojPrijave: application.application_number,
+      poruka: "Zatražili ste izmjenu postojeće prijave. Kliknite na poveznicu ispod za nastavak.",
+      magicLink,
+    });
+    await sendEmail({ to: application.email, ...template });
+  } catch (emailError) {
+    console.error("Email error:", emailError);
+    return { error: "Greška pri slanju emaila." };
+  }
+
+  return { success: true };
 }

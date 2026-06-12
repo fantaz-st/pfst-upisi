@@ -20,12 +20,16 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import PersonIcon from "@mui/icons-material/Person";
 import SchoolIcon from "@mui/icons-material/School";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import { fullApplicationSchema } from "@/lib/applications/validation";
-import { submitApplication } from "@/lib/applications/actions";
+import { submitApplication, requestEditLinkForExisting } from "@/lib/applications/actions";
 import DocumentUpload from "./DocumentUpload";
 import PhotoUpload from "./PhotoUpload";
 import { applicationConfigs, documentTypeLabels, studyPrograms, studyTypes } from "@/lib/applications/config";
@@ -45,6 +49,10 @@ export default function ApplicationForm({ intake }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState({});
   const [photo, setPhoto] = useState(null);
+  const [duplicateInfo, setDuplicateInfo] = useState(null); // { duplicateType, existingApplication }
+  const [pendingFormData, setPendingFormData] = useState(null);
+  const [linkSent, setLinkSent] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
 
   const config = applicationConfigs[intake.study_level] ??
     applicationConfigs[intake.slug] ?? {
@@ -124,23 +132,19 @@ export default function ApplicationForm({ intake }) {
     setValue("consent", true);
   };
 
-  const onSubmit = async (data) => {
-    if (!photo) {
-      setServerError("Molimo dodajte fotografiju pristupnika.");
-      return;
-    }
-
-    const missingDocs = config.requiredDocuments.filter((docType) => !uploadedFiles[docType]);
-    if (missingDocs.length > 0) {
-      setServerError(`Nedostaju obavezni dokumenti: ${missingDocs.map((d) => documentTypeLabels[d]).join(", ")}`);
-      return;
-    }
-
+  const doSubmit = async (data, force = false) => {
     setIsSubmitting(true);
     setServerError(null);
 
     try {
-      const result = await submitApplication(data, intake.slug);
+      const result = await submitApplication(data, intake.slug, force);
+
+      if (result.duplicate) {
+        setPendingFormData(data);
+        setDuplicateInfo(result);
+        setIsSubmitting(false);
+        return;
+      }
 
       if (result.error) {
         setServerError(result.error);
@@ -159,6 +163,47 @@ export default function ApplicationForm({ intake }) {
       setServerError("Greška pri slanju prijave. Pokušajte ponovo.");
       setIsSubmitting(false);
     }
+  };
+
+  const onSubmit = async (data) => {
+    if (!photo) {
+      setServerError("Molimo dodajte fotografiju pristupnika.");
+      return;
+    }
+
+    const missingDocs = config.requiredDocuments.filter((docType) => !uploadedFiles[docType]);
+    if (missingDocs.length > 0) {
+      setServerError(`Nedostaju obavezni dokumenti: ${missingDocs.map((d) => documentTypeLabels[d]).join(", ")}`);
+      return;
+    }
+
+    await doSubmit(data, false);
+  };
+
+  const handleSendEditLink = async () => {
+    if (!duplicateInfo?.existingApplication?.id) return;
+    setSendingLink(true);
+    const result = await requestEditLinkForExisting(duplicateInfo.existingApplication.id);
+    setSendingLink(false);
+    if (result.success) {
+      setLinkSent(true);
+    } else {
+      setServerError(result.error || "Greška pri slanju emaila.");
+      setDuplicateInfo(null);
+    }
+  };
+
+  const handleSendAnyway = async () => {
+    setDuplicateInfo(null);
+    if (pendingFormData) {
+      await doSubmit(pendingFormData, true);
+    }
+  };
+
+  const handleCloseDuplicateModal = () => {
+    setDuplicateInfo(null);
+    setPendingFormData(null);
+    setLinkSent(false);
   };
 
   const SectionHeader = ({ icon, title }) => (
@@ -561,6 +606,83 @@ export default function ApplicationForm({ intake }) {
           )}
         </Button>
       </Box>
+
+      {/* Modal — duplikat OIB-a */}
+      <Dialog open={!!duplicateInfo} onClose={handleCloseDuplicateModal} maxWidth="sm" fullWidth>
+        {linkSent ? (
+          <>
+            <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>Link je poslan ✓</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                Poslali smo vam email s poveznicom za izmjenu vaše postojeće prijave ({duplicateInfo?.existingApplication?.application_number}). Provjerite svoj email i kliknite na
+                poveznicu za nastavak.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button
+                onClick={handleCloseDuplicateModal}
+                variant="contained"
+                sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}
+              >
+                Zatvori
+              </Button>
+            </DialogActions>
+          </>
+        ) : duplicateInfo?.duplicateType === "same_program" ? (
+          <>
+            <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>Već imate prijavu</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 1.5 }}>
+                Pronašli smo postojeću prijavu s istim OIB-om za isti studij i vrstu studiranja (broj prijave:{" "}
+                <strong>{duplicateInfo?.existingApplication?.application_number}</strong>).
+              </Typography>
+              <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                Ako želite ispraviti podatke u toj prijavi, poslat ćemo vam poveznicu za izmjenu na email.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+              <Button onClick={handleCloseDuplicateModal} disabled={sendingLink}>
+                Odustani
+              </Button>
+              <Button
+                onClick={handleSendEditLink}
+                variant="contained"
+                disabled={sendingLink}
+                startIcon={sendingLink ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : null}
+                sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}
+              >
+                {sendingLink ? "Slanje..." : "Pošalji link za izmjenu"}
+              </Button>
+            </DialogActions>
+          </>
+        ) : (
+          <>
+            <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>Već imate prijavu za drugi studij</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 1.5 }}>
+                Pronašli smo postojeću prijavu s istim OIB-om za drugi studij (broj prijave: <strong>{duplicateInfo?.existingApplication?.application_number}</strong>).
+              </Typography>
+              <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                Ako je ovo namjerno (prijavljujete se na dva studija), možete poslati ovu novu prijavu. Ako je riječ o pogrešci, možemo vam poslati poveznicu za izmjenu postojeće
+                prijave.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexWrap: "wrap" }}>
+              <Button onClick={handleSendEditLink} disabled={sendingLink} startIcon={sendingLink ? <CircularProgress size={16} /> : null}>
+                {sendingLink ? "Slanje..." : "Pošalji link za izmjenu postojeće"}
+              </Button>
+              <Button
+                onClick={handleSendAnyway}
+                variant="contained"
+                disabled={sendingLink || isSubmitting}
+                sx={{ borderRadius: "100px", background: "var(--blue-main)", "&:hover": { background: "var(--blue-dark)" } }}
+              >
+                Ipak pošalji ovu prijavu
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 }
