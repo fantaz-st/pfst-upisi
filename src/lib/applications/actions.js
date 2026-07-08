@@ -483,3 +483,28 @@ export async function bulkSoftDeleteApplications(applicationIds) {
   if (error) return { error: error.message };
   return { success: true, count: applicationIds.length };
 }
+
+export async function uploadDocumentsViaToken(token, files) {
+  const supabase = await createClient();
+
+  // Validiraj token (isti pattern kao updateApplicationViaToken)
+  const { data: tokenData } = await supabase.from("application_edit_tokens").select("expires_at, applications ( id )").eq("token", token).single();
+
+  if (!tokenData?.applications?.id) return { error: "Nevažeći link." };
+  if (new Date(tokenData.expires_at) < new Date()) return { error: "Link je istekao." };
+
+  const applicationId = tokenData.applications.id;
+
+  // Kandidat mijenja dokumente — obriši postojeće istog tipa prije uploada novih
+  const types = [...new Set(files.map((f) => f.documentType))];
+  for (const documentType of types) {
+    const { data: existing } = await supabase.from("application_documents").select("id, file_path").eq("application_id", applicationId).eq("document_type", documentType);
+
+    if (existing?.length) {
+      await supabase.storage.from("application-documents").remove(existing.map((d) => d.file_path));
+      await supabase.from("application_documents").delete().eq("application_id", applicationId).eq("document_type", documentType);
+    }
+  }
+
+  return uploadDocuments(applicationId, files);
+}

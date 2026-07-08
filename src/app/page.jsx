@@ -49,7 +49,6 @@ export default async function HomePage() {
         <div className={styles.heroShape} />
 
         <Container maxWidth="lg" className={styles.heroContent}>
-<<<<<<< HEAD
           <div className={styles.heroTextWrap}>
             <Typography variant="h2" className={styles.heroTitle}>
               Upisi na
@@ -58,18 +57,12 @@ export default async function HomePage() {
             </Typography>
 
             <div className={styles.heroDash} />
-=======
-          <Typography variant="h1" className={styles.heroTitle}>
-            Upisi na <span className={styles.heroTitleAccent}>Pomorski fakultet</span>
-          </Typography>
->>>>>>> 4b38c9dec328e8a43ff1079f44b1c206145cd58b
 
             <p className={styles.heroSubtitle}>
               Odaberite jednu od ponuđenih prijava i ispunite je. <br className={styles.subBreak} />
               Priložite tražene dokumente i pratite status vaše prijave.
             </p>
 
-<<<<<<< HEAD
             <div className={styles.heroActions}>
               <a href="#upisi" className={styles.heroCta}>
                 <AssignmentIcon sx={{ fontSize: 19 }} />
@@ -95,17 +88,6 @@ export default async function HomePage() {
           {/* <Typography className={styles.sectionSubtitle}>Odaberite jednu od otvorenih prijava i ispunite obrazac za upis.</Typography> */}
           <IntakeCards intakes={intakes} />
         </Container>
-=======
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Button href="#upisi" size="large" variant="outlined" className={styles.heroBtnOutline}>
-              Pogledaj studije
-            </Button>
-            <Button href="/status" size="large" variant="contained" className={styles.heroBtnContained}>
-              Provjeri status
-            </Button>
-          </Box>
-        </Container>
->>>>>>> 4b38c9dec328e8a43ff1079f44b1c206145cd58b
       </Box>
 
       {/* Status strip */}
