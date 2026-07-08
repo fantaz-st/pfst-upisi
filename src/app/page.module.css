@@ -1,7 +1,11 @@
 /* ─── Hero — fotografija + bijeli zakrivljeni panel ────── */
 .hero {
   position: relative;
+<<<<<<< HEAD
   min-height: clamp(540px, 86vh, 840px);
+=======
+  padding: 64px 0;
+>>>>>>> 4b38c9dec328e8a43ff1079f44b1c206145cd58b
   display: flex;
   align-items: center;
   background-image: url("/images/hero.jpg");
@@ -10,8 +14,18 @@
   overflow: hidden;
 }
 
+<<<<<<< HEAD
 /* Svijetloplavi klin — ispod bijelog panela, dolje lijevo */
 .heroShapeLight {
+=======
+@media (min-width: 768px) {
+  .hero {
+    padding: 96px 0;
+  }
+}
+
+.heroPattern {
+>>>>>>> 4b38c9dec328e8a43ff1079f44b1c206145cd58b
   position: absolute;
   bottom: -14%;
   left: -8%;
@@ -39,6 +53,7 @@
 
 .heroContent {
   position: relative;
+<<<<<<< HEAD
   z-index: 3;
   width: 100%;
   padding: 110px 0 80px;
@@ -235,6 +250,52 @@
   .subBreak {
     display: none;
   }
+=======
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+}
+
+.heroTitle {
+  font-size: clamp(3.2rem, 6vw, 3.25rem);
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.heroTitleAccent {
+  color: var(--blue-light);
+}
+
+.heroSubtitle {
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.heroBtnOutline {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.heroBtnOutline:hover {
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.heroBtnContained {
+  background: var(--blue-light) !important;
+  color: var(--blue-dark) !important;
+}
+
+.heroBtnContained:hover {
+  background: #ffffff !important;
+>>>>>>> 4b38c9dec328e8a43ff1079f44b1c206145cd58b
 }
 
 .statusStrip {
@@ -263,6 +324,7 @@
   height: 8px;
   border-radius: 50%;
   background: var(--blue-main);
+  flex-shrink: 0;
 }
 
 .statusStripText {
@@ -436,9 +498,47 @@
 }
 
 /* ─── Decorative background logo ───────────────────────── */
+<<<<<<< HEAD
 
 @media (max-width: 900px) {
   .intakesSection {
     padding: 80px 0;
+  }
+=======
+.heroLogoBg {
+  position: absolute;
+  right: -80px;
+  top: 50%;
+  transform: translateY(-50%) rotate(25deg);
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .heroLogoBg {
+    display: block;
+    right: 40px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .heroLogoBg {
+    right: 120px;
+  }
+}
+
+.heroLogoBgImg {
+  width: 420px;
+  height: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.08;
+>>>>>>> 4b38c9dec328e8a43ff1079f44b1c206145cd58b
+}
+
+@media (min-width: 1280px) {
+  .heroLogoBgImg {
+    width: 520px;
   }
 }
