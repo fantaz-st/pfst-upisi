@@ -16,7 +16,7 @@ export function emailPotvrda({ ime, prezime, brojPrijave, studij, akademskaGodin
           
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0D2B52,#1B6CA8);padding:40px;text-align:center;">
+            <td bgcolor="#0D2B52" style="background:linear-gradient(135deg,#0D2B52,#1B6CA8);padding:40px;text-align:center;">
               <p style="margin:0 0 8px;color:rgba(255,255,255,0.7);font-size:13px;letter-spacing:2px;text-transform:uppercase;">Pomorski fakultet u Splitu</p>
               <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Prijava zaprimljena</h1>
             </td>
@@ -85,7 +85,7 @@ export function emailPotrebneIzmjene({ ime, prezime, brojPrijave, poruka, magicL
           
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg,#0D2B52,#1B6CA8);padding:40px;text-align:center;">
+            <td bgcolor="#0D2B52" style="background:linear-gradient(135deg,#0D2B52,#1B6CA8);padding:40px;text-align:center;">
               <p style="margin:0 0 8px;color:rgba(255,255,255,0.7);font-size:13px;letter-spacing:2px;text-transform:uppercase;">Pomorski fakultet u Splitu</p>
               <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Potrebne izmjene</h1>
             </td>
@@ -114,9 +114,10 @@ export function emailPotrebneIzmjene({ ime, prezime, brojPrijave, poruka, magicL
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                 <tr>
                   <td align="center">
-                    <a href="${magicLink}" style="display:inline-block;background:linear-gradient(135deg,#0D2B52,#1B6CA8);color:#ffffff;text-decoration:none;padding:16px 40px;border-radius:6px;font-size:16px;font-weight:600;letter-spacing:0.5px;">
-                      Izmijeni prijavu →
-                    </a>
+                    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td bgcolor="#0D2B52" style="border-radius:6px;">
+                  <a href="${magicLink}" target="_blank" style="display:inline-block;padding:16px 40px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">Izmijeni prijavu →</a>
+                </td></tr></table>
+                <p style="margin:16px 0 0;font-size:12px;color:#888;text-align:center;">Ako gumb ne radi, otvorite ovaj link:<br><a href="${magicLink}" style="color:#1B6CA8;word-break:break-all;">${magicLink}</a></p>
                   </td>
                 </tr>
               </table>

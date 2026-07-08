@@ -29,7 +29,7 @@ export default async function AdminHomePage({ searchParams }) {
 
   let query = supabase
     .from("applications")
-    .select(`id, application_number, first_name, last_name, email, status, created_at, program, study_type, intakes ( id, title, academic_year, slug )`)
+    .select(`id, application_number, first_name, last_name, email, status, created_at, program, study_type, intakes ( id, title, academic_year, slug, study_level )`)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
@@ -38,7 +38,7 @@ export default async function AdminHomePage({ searchParams }) {
   const { data: applications } = await query;
 
   const allApps = applications || [];
-  const visibleApps = permissions === "all" ? allApps : allApps.filter((app) => permissions.includes(app.program));
+  const visibleApps = permissions === "all" ? allApps : allApps.filter((app) => Array.isArray(permissions?.programs) && permissions.programs.includes(`${app.program}:${app.intakes?.study_level}`));
 
   // ─── Statistike po statusu ──────────────────────────────
   const statusCounts = {};
@@ -57,24 +57,8 @@ export default async function AdminHomePage({ searchParams }) {
     .map(([program, count]) => ({ program, count }))
     .sort((a, b) => b.count - a.count);
 
-  // ─── Trend kroz vrijeme (po danu, zadnjih 30 dana) ──────
-  const now = new Date();
-  const days = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
-  }
-  const dayCounts = {};
-  days.forEach((d) => (dayCounts[d] = 0));
-  visibleApps.forEach((app) => {
-    const day = app.created_at?.slice(0, 10);
-    if (day in dayCounts) dayCounts[day]++;
-  });
-  const trendData = days.map((d) => ({
-    label: new Date(d).toLocaleDateString("hr-HR", { day: "2-digit", month: "2-digit" }),
-    count: dayCounts[d],
-  }));
+  // ─── Trend — timestampovi idu klijentu, raspon se bira u dropdownu ──
+  const trendTimestamps = visibleApps.map((app) => app.created_at).filter(Boolean);
 
   // ─── Zadnje prijave ──────────────────────────────────────
   const recentApps = visibleApps.slice(0, 8);
@@ -110,10 +94,10 @@ export default async function AdminHomePage({ searchParams }) {
         <Grid size={{ xs: 12, md: 7 }}>
           <div className={styles.tableCard}>
             <div className={styles.tableHeader}>
-              <span className={styles.tableTitle}>Trend prijava — zadnjih 30 dana</span>
+              <span className={styles.tableTitle}>Trend prijava</span>
             </div>
             <Box sx={{ p: 2 }}>
-              {trendData.some((d) => d.count > 0) ? <ApplicationsTrendChart data={trendData} /> : <div className={styles.emptyState}>Nema podataka za prikaz.</div>}
+              <ApplicationsTrendChart timestamps={trendTimestamps} />
             </Box>
           </div>
         </Grid>

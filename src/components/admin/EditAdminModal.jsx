@@ -33,7 +33,10 @@ export default function EditAdminModal({ open, onClose, admin }) {
   const [loadingPerms, setLoadingPerms] = useState(false);
   const [error, setError] = useState(null);
 
-  const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski].filter((prog, index, self) => index === self.findIndex((p) => p.value === prog.value));
+  const programGroups = [
+    { level: "prijediplomski", label: "Prijediplomski (PD)", items: studyPrograms.prijediplomski },
+    { level: "diplomski", label: "Diplomski (D)", items: studyPrograms.diplomski },
+  ];
 
   useEffect(() => {
     if (!open || !admin) return;
@@ -115,15 +118,23 @@ export default function EditAdminModal({ open, onClose, admin }) {
                 <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)", mb: 1 }}>
                   Dozvoljeni studiji:
                 </Typography>
-                <FormGroup>
-                  {allPrograms.map((prog) => (
-                    <FormControlLabel
-                      key={prog.value}
-                      control={<Checkbox size="small" checked={programs.includes(prog.value)} onChange={() => handleProgramToggle(prog.value)} />}
-                      label={<Typography variant="body2">{prog.label}</Typography>}
-                    />
-                  ))}
-                </FormGroup>
+                {programGroups.map((group) => (
+                  <FormGroup key={group.level} sx={{ mb: 1.5 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+                      {group.label}
+                    </Typography>
+                    {group.items.map((prog) => {
+                      const key = `${prog.value}:${group.level}`;
+                      return (
+                        <FormControlLabel
+                          key={key}
+                          control={<Checkbox size="small" checked={programs.includes(key)} onChange={() => handleProgramToggle(key)} />}
+                          label={<Typography variant="body2">{prog.label}</Typography>}
+                        />
+                      );
+                    })}
+                  </FormGroup>
+                ))}
               </>
             )}
           </>

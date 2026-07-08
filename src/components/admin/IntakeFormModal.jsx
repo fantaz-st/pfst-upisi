@@ -122,8 +122,8 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
       const { data: adminRoles } = await supabase.from("admin_roles").select("user_id, email, role").eq("role", "admin").order("email");
       const adminsWithPrograms = await Promise.all(
         (adminRoles || []).map(async (admin) => {
-          const { data: perms } = await supabase.from("admin_program_permissions").select("program").eq("user_id", admin.user_id);
-          return { ...admin, programs: perms?.map((p) => p.program) || [] };
+          const { data: perms } = await supabase.from("admin_program_permissions").select("program, study_level").eq("user_id", admin.user_id);
+          return { ...admin, programs: perms?.map((p) => `${p.program.toUpperCase()} (${p.study_level === "diplomski" ? "D" : "PD"})`) || [] };
         }),
       );
       setAdmins(adminsWithPrograms);
@@ -448,7 +448,7 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
                     </Typography>
                     {admin.programs.length > 0 && (
                       <Typography variant="caption" color="text.secondary">
-                        ({admin.programs.map((p) => p.toUpperCase()).join(", ")})
+                        ({admin.programs.join(", ")})
                       </Typography>
                     )}
                   </Box>

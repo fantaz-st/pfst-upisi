@@ -39,7 +39,7 @@ export default async function AllApplicationsPage({ searchParams }) {
     .select(
       `
       id, application_number, first_name, last_name, email, oib, status, created_at, program, study_type,
-      intakes ( title, academic_year, slug )
+      intakes ( title, academic_year, slug, study_level )
     `,
     )
     .is("deleted_at", null)
@@ -62,7 +62,7 @@ export default async function AllApplicationsPage({ searchParams }) {
   const applicationsWithAccess =
     applications?.map((app) => ({
       ...app,
-      canAccess: permissions === "all" || (Array.isArray(permissions?.programs) && permissions.programs.includes(app.program)),
+      canAccess: permissions === "all" || (Array.isArray(permissions?.programs) && permissions.programs.includes(`${app.program}:${app.intakes?.study_level}`)),
     })) || [];
 
   return (

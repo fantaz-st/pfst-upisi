@@ -27,8 +27,10 @@ export default function AddAdminForm() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski]
-    .filter((prog, index, self) => index === self.findIndex((p) => p.value === prog.value));
+  const programGroups = [
+    { level: "prijediplomski", label: "Prijediplomski (PD)", items: studyPrograms.prijediplomski },
+    { level: "diplomski", label: "Diplomski (D)", items: studyPrograms.diplomski },
+  ];
 
   const handleProgramToggle = (value) => {
     setPrograms(prev => prev.includes(value) ? prev.filter(p => p !== value) : [...prev, value]);
@@ -82,16 +84,24 @@ export default function AddAdminForm() {
             <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)", mb: 1 }}>
               Dozvoljeni studiji:
             </Typography>
-            <FormGroup row sx={{ mb: 3 }}>
-              {allPrograms.map(prog => (
-                <FormControlLabel
-                  key={prog.value}
-                  control={<Checkbox size="small" checked={programs.includes(prog.value)} onChange={() => handleProgramToggle(prog.value)} />}
-                  label={<Typography variant="body2">{prog.label}</Typography>}
-                  sx={{ mr: 3, mb: 0.5 }}
-                />
-              ))}
-            </FormGroup>
+            {programGroups.map((group) => (
+              <FormGroup key={group.level} row sx={{ mb: 2 }}>
+                <Typography variant="caption" sx={{ width: "100%", fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+                  {group.label}
+                </Typography>
+                {group.items.map((prog) => {
+                  const key = `${prog.value}:${group.level}`;
+                  return (
+                    <FormControlLabel
+                      key={key}
+                      control={<Checkbox size="small" checked={programs.includes(key)} onChange={() => handleProgramToggle(key)} />}
+                      label={<Typography variant="body2">{prog.label}</Typography>}
+                      sx={{ mr: 3, mb: 0.5 }}
+                    />
+                  );
+                })}
+              </FormGroup>
+            ))}
           </>
         )}
 

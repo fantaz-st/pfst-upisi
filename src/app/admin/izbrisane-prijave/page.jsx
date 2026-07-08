@@ -31,6 +31,7 @@ export default async function DeletedApplicationsPage() {
       deleted_at,
       program,
       intakes (
+        study_level,
         title,
         academic_year
       )
@@ -42,7 +43,7 @@ export default async function DeletedApplicationsPage() {
   const appsWithAccess =
     applications?.map((app) => ({
       ...app,
-      canAccess: permissions === "all" || permissions.includes(app.program),
+      canAccess: permissions === "all" || (Array.isArray(permissions?.programs) && permissions.programs.includes(`${app.program}:${app.intakes?.study_level}`)),
     })) || [];
 
   return (

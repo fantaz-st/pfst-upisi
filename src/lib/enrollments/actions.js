@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -24,7 +25,7 @@ const enrollmentSchema = z.object({
 });
 
 export async function getEnrollmentByToken(token) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("enrollments")
     .select(
@@ -44,7 +45,7 @@ export async function getEnrollmentByToken(token) {
 }
 
 export async function submitEnrollment(token, formData, photo = null) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Dohvati enrollment po tokenu
   const { data: enrollment, error: enrollmentError } = await supabase
@@ -156,7 +157,7 @@ export async function sendEnrollmentInvite({ token, email, firstName, lastName }
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <tr>
-          <td style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:40px;text-align:center;">
+          <td bgcolor="#2E7D32" style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:40px;text-align:center;">
             <p style="margin:0 0 8px;color:rgba(255,255,255,0.7);font-size:13px;letter-spacing:2px;text-transform:uppercase;">Pomorski fakultet u Splitu</p>
             <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Prijava prihvaćena ✓</h1>
           </td>
@@ -169,7 +170,10 @@ export async function sendEnrollmentInvite({ token, email, firstName, lastName }
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
               <tr><td align="center">
-                <a href="${enrollmentUrl}" style="display:inline-block;background:#2E7D32;color:#ffffff;text-decoration:none;padding:16px 40px;border-radius:6px;font-size:16px;font-weight:600;letter-spacing:0.5px;">Nastavi s upisom &rarr;</a>
+                <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td bgcolor="#2E7D32" style="border-radius:6px;">
+                  <a href="${enrollmentUrl}" target="_blank" style="display:inline-block;padding:16px 40px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">Nastavi s upisom &rarr;</a>
+                </td></tr></table>
+                <p style="margin:16px 0 0;font-size:12px;color:#888;text-align:center;">Ako gumb ne radi, otvorite ovaj link:<br><a href="${enrollmentUrl}" style="color:#2E7D32;word-break:break-all;">${enrollmentUrl}</a></p>
               </td></tr>
             </table>
             <p style="margin:0;font-size:13px;color:#999;text-align:center;">Link je aktivan 14 dana.</p>

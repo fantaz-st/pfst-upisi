@@ -25,7 +25,11 @@ export default async function MyIntakePage({ params }) {
   if (!intake) notFound();
 
   const permissions = await getAdminPermissions();
-  const allowedPrograms = permissions === "all" ? null : permissions.programs;
+  // Ključevi su "program:study_level" — filtriraj po razini ovog intakea
+  const allowedPrograms =
+    permissions === "all"
+      ? null
+      : permissions.programs.filter((key) => key.endsWith(`:${intake.study_level}`)).map((key) => key.split(":")[0]);
 
   let query = supabase
     .from("applications")

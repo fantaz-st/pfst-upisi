@@ -20,7 +20,13 @@ export async function createAdmin({ email, password, role, programs }) {
   if (roleError) return { error: "Greška pri dodjeljivanju role: " + roleError.message };
 
   if (role === "admin" && programs.length > 0) {
-    const { error: permError } = await supabase.from("admin_program_permissions").insert(programs.map((program) => ({ user_id: userId, program })));
+    const uniqueKeys = [...new Set(programs)];
+    const { error: permError } = await supabase.from("admin_program_permissions").insert(
+      uniqueKeys.map((key) => {
+        const [program, study_level] = key.split(":");
+        return { user_id: userId, program, study_level: study_level || "prijediplomski" };
+      }),
+    );
     if (permError) return { error: "Greška pri dodjeljivanju dozvola: " + permError.message };
   }
 
@@ -44,7 +50,13 @@ export async function updateAdmin({ userId, role, programs, password }) {
   await supabase.from("admin_program_permissions").delete().eq("user_id", userId);
 
   if (role === "admin" && programs.length > 0) {
-    const { error: permError } = await supabase.from("admin_program_permissions").insert(programs.map((program) => ({ user_id: userId, program })));
+    const uniqueKeys = [...new Set(programs)];
+    const { error: permError } = await supabase.from("admin_program_permissions").insert(
+      uniqueKeys.map((key) => {
+        const [program, study_level] = key.split(":");
+        return { user_id: userId, program, study_level: study_level || "prijediplomski" };
+      }),
+    );
     if (permError) return { error: "Greška pri ažuriranju dozvola: " + permError.message };
   }
 

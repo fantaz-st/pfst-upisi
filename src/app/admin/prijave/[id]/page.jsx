@@ -30,7 +30,7 @@ export default async function ApplicationDetailPage({ params }) {
 
   if (error || !application) notFound();
 
-  const hasAccess = await canAccessApplication(application.program, application.intake_id);
+  const hasAccess = await canAccessApplication(application.program, application.intake_id, application.intakes?.study_level);
   if (!hasAccess) redirect("/admin/moje-prijave");
 
   const {
