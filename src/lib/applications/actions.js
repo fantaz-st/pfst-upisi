@@ -2,14 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { generateApplicationNumber } from "./applicationNumber";
-import { fullApplicationSchema } from "./validation";
+import { fullApplicationSchema, personalInfoSchema } from "./validation";
 import { sendEmail } from "@/lib/email/send";
 import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno } from "@/lib/email/templates";
-import { emailUObradi } from "@/lib/email/templates";
-import { getProgramLabel, applicationStatuses } from "@/lib/applications/config";
+import { getProgramLabel } from "@/lib/applications/config";
 import { revalidatePath } from "next/cache";
 
-export async function submitApplication(formData, slug, force = false) {
+export async function submitApplication(formData, slug) {
   const supabase = await createClient();
 
   const { data: intake, error: intakeError } = await supabase
@@ -34,82 +33,16 @@ export async function submitApplication(formData, slug, force = false) {
     phone,
     oib,
     birth_date,
-    birth_place,
-    gender,
-    marital_status,
     citizenship,
     address,
     city,
     postal_code,
     program,
     study_type,
-    father_name,
-    father_occupation,
-    father_address,
-    mother_name,
-    mother_occupation,
-    mother_address,
     previous_institution,
     previous_program,
     previous_completion_year,
-    other_education,
-    ranking_score,
-    enrollment_type,
   } = parsed.data;
-
-  // ─── Provjera duplikata OIB-a u istom intakeu ───────────
-  if (!force) {
-    const { data: existing } = await supabase
-      .from("applications")
-      .select("id, application_number, program, study_type")
-      .eq("intake_id", intake.id)
-      .eq("oib", oib)
-      .is("deleted_at", null);
-
-    if (existing?.length > 0) {
-      const sameProgram = existing.find((a) => a.program === program && a.study_type === study_type);
-      if (sameProgram) {
-        return {
-          duplicate: true,
-          duplicateType: "same_program",
-          existingApplication: sameProgram,
-        };
-      } else {
-        return {
-          duplicate: true,
-          duplicateType: "different_program",
-          existingApplication: existing[0],
-        };
-      }
-    }
-  }
-
-  // ─── Provjera liste kandidata ───────────────────────────
-  const { count: listCount } = await supabase
-    .from("intake_eligible_candidates")
-    .select("id", { count: "exact", head: true })
-    .eq("intake_id", intake.id)
-    .eq("program", program)
-    .eq("study_type", study_type);
-
-  if (listCount > 0) {
-    // Lista postoji — provjeri je li OIB na njoj
-    const { data: candidate } = await supabase
-      .from("intake_eligible_candidates")
-      .select("id")
-      .eq("intake_id", intake.id)
-      .eq("program", program)
-      .eq("study_type", study_type)
-      .eq("oib", oib)
-      .single();
-
-    if (!candidate) {
-      return {
-        error: "Vaš OIB nije pronađen na listi kvalificiranih kandidata za odabrani studij i vrstu studiranja. Ako smatrate da je došlo do greške, obratite se referadi fakulteta.",
-      };
-    }
-  }
-  // Ako lista ne postoji (listCount === 0) — upis otvoren svima
 
   const application_number = generateApplicationNumber();
 
@@ -124,27 +57,15 @@ export async function submitApplication(formData, slug, force = false) {
       phone: phone || null,
       oib,
       birth_date,
-      birth_place: birth_place || null,
-      gender: gender || null,
-      marital_status: marital_status || null,
       citizenship,
       address,
       city,
       postal_code,
       program,
       study_type,
-      father_name: father_name || null,
-      father_occupation: father_occupation || null,
-      father_address: father_address || null,
-      mother_name: mother_name || null,
-      mother_occupation: mother_occupation || null,
-      mother_address: mother_address || null,
       previous_institution,
       previous_program,
       previous_completion_year,
-      other_education: other_education || null,
-      ranking_score: ranking_score || null,
-      enrollment_type: enrollment_type || null,
       status: "submitted",
       submitted_at: new Date().toISOString(),
     })
@@ -250,26 +171,22 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
 
       const { data: tokenData } = await supabase
         .from("application_edit_tokens")
-        .insert({ application_id: applicationId, message: adminMessage, expires_at: expiresAt.toISOString() })
+        .insert({
+          application_id: applicationId,
+          message: adminMessage,
+          expires_at: expiresAt.toISOString(),
+        })
         .select()
         .single();
 
       const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/prijava/uredi/${tokenData.token}`;
+
       const template = emailPotrebneIzmjene({
         ime: application.first_name,
         prezime: application.last_name,
         brojPrijave: application.application_number,
         poruka: adminMessage,
         magicLink,
-      });
-      await sendEmail({ to: application.email, ...template });
-    } else if (newStatus === "in_review") {
-      const template = emailUObradi({
-        ime: application.first_name,
-        prezime: application.last_name,
-        brojPrijave: application.application_number,
-        studij: programLabel,
-        akademskaGodina,
       });
       await sendEmail({ to: application.email, ...template });
     } else if (newStatus === "accepted") {
@@ -315,23 +232,19 @@ export async function updateApplicationViaToken(token, data) {
 
   const application = tokenData.applications;
 
-  // Provjeri može li kandidat trenutno uređivati prijavu
-  const statusConfig = applicationStatuses[application.status];
-  if (!statusConfig?.candidateCanEdit) {
-    return { error: "Vaša prijava je trenutno u statusu koji ne dozvoljava izmjene. Za pomoć kontaktirajte referadu fakulteta." };
-  }
-
-  const parsed = fullApplicationSchema.safeParse(data);
+  const parsed = personalInfoSchema.safeParse(data);
   if (!parsed.success) {
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  // Makni consent iz podataka — nije DB kolona
-  const { consent, ...updateData } = parsed.data;
-
   const { error: updateError } = await supabase
     .from("applications")
-    .update({ ...updateData, oib: application.oib, status: "submitted", updated_at: new Date().toISOString() })
+    .update({
+      ...parsed.data,
+      oib: application.oib,
+      status: "submitted",
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", application.id);
 
   if (updateError) return { error: updateError.message };
@@ -359,26 +272,6 @@ export async function updateApplicationViaToken(token, data) {
   }
 
   return { success: true };
-}
-
-export async function uploadDocumentsViaToken(token, files) {
-  const supabase = await createClient();
-
-  const { data: tokenData } = await supabase.from("application_edit_tokens").select("*, applications ( id, status )").eq("token", token).single();
-
-  if (!tokenData) return { error: "Nevažeći link." };
-
-  const isExpired = new Date(tokenData.expires_at) < new Date();
-  if (isExpired) return { error: "Link je istekao." };
-
-  const application = tokenData.applications;
-  const statusConfig = applicationStatuses[application.status];
-  if (!statusConfig?.candidateCanEdit) {
-    return { error: "Vaša prijava je trenutno u statusu koji ne dozvoljava izmjene." };
-  }
-
-  const result = await uploadDocuments(application.id, files);
-  return result;
 }
 
 export async function addApplicationNote(applicationId, note, adminId) {
@@ -431,42 +324,140 @@ export async function checkApplicationStatus(applicationNumber, oib) {
   return data;
 }
 
-export async function requestEditLinkForExisting(applicationId) {
+export async function submitApplicationD(formData, slug, filesToUpload = []) {
   const supabase = await createClient();
 
-  const { data: application } = await supabase.from("applications").select("id, email, first_name, last_name, application_number").eq("id", applicationId).single();
-
-  if (!application) return { error: "Prijava nije pronađena." };
-
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  const { data: tokenData, error: tokenError } = await supabase
-    .from("application_edit_tokens")
-    .insert({
-      application_id: applicationId,
-      message: "Zatražili ste izmjenu vlastite prijave putem obrasca za prijavu.",
-      expires_at: expiresAt.toISOString(),
-    })
-    .select()
+  // Dohvati intake
+  const { data: intake, error: intakeError } = await supabase
+    .from("intakes")
+    .select("id, is_open, is_visible, academic_year, title")
+    .eq("slug", slug)
+    .eq("is_visible", true)
     .single();
 
+  if (intakeError || !intake) return { error: "Vrsta upisa nije pronađena." };
+  if (!intake.is_open) return { error: "Prijave za ovaj studij trenutno nisu otvorene." };
+
+  // Validiraj
+  const { diplomskiApplicationSchema } = await import("./validation");
+  const parsed = diplomskiApplicationSchema.safeParse(formData);
+  if (!parsed.success) {
+    console.error("Diplomski validation errors:", parsed.error.flatten().fieldErrors);
+    return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const {
+    first_name,
+    last_name,
+    email,
+    phone,
+    oib,
+    birth_date,
+    citizenship,
+    address,
+    city,
+    postal_code,
+    program,
+    study_type,
+    previous_study_institution,
+    previous_completion_year,
+    father_name,
+  } = parsed.data;
+
+  // Provjeri duplikat OIB
+  const { data: existing } = await supabase.from("applications").select("id").eq("oib", oib).eq("intake_id", intake.id).is("deleted_at", null).maybeSingle();
+
+  if (existing) return { error: "Prijava s ovim OIB-om već postoji za ovaj upisni rok." };
+
+  const application_number = generateApplicationNumber();
+
+  const { data: application, error: insertError } = await supabase
+    .from("applications")
+    .insert({
+      intake_id: intake.id,
+      application_number,
+      first_name,
+      last_name,
+      email,
+      phone: phone || null,
+      oib,
+      birth_date,
+      citizenship,
+      address,
+      city,
+      postal_code,
+      program,
+      study_type,
+      father_name: father_name || null,
+      previous_study_institution,
+      previous_completion_year,
+      status: "submitted",
+      submitted_at: new Date().toISOString(),
+    })
+    .select("id, application_number")
+    .single();
+
+  if (insertError) {
+    console.error("Insert error:", insertError);
+    return { error: "Greška pri slanju prijave. Pokušajte ponovo." };
+  }
+
+  // Upload dokumenata
+  if (filesToUpload.length > 0) {
+    await uploadDocuments(application.id, filesToUpload);
+  }
+
+  // Pošalji email potvrde
+  try {
+    const { emailPotvrda } = await import("@/lib/email/templates");
+    const { sendEmail } = await import("@/lib/email/send");
+    const emailContent = emailPotvrda({
+      ime: first_name,
+      prezime: last_name,
+      brojPrijave: application_number,
+      studij: getProgramLabel(program),
+      akademskaGodina: intake.academic_year,
+    });
+    await sendEmail({ to: email, ...emailContent });
+  } catch (e) {
+    console.error("Email error:", e);
+  }
+
+  return { success: true, applicationNumber: application_number };
+}
+
+export async function requestEditLinkForExisting(applicationId) {
+  const supabase = await createClient();
+  const { data: application, error } = await supabase
+    .from("applications")
+    .select("id, email, first_name, last_name, application_number, intakes ( title, academic_year )")
+    .eq("id", applicationId)
+    .single();
+  if (error || !application) return { error: "Prijava nije pronađena." };
+
+  const token = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error: tokenError } = await supabase.from("edit_tokens").insert({
+    application_id: applicationId,
+    token,
+    expires_at: expiresAt,
+  });
   if (tokenError) return { error: tokenError.message };
 
-  const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/prijava/uredi/${tokenData.token}`;
+  const magicLink = `${process.env.NEXT_PUBLIC_SITE_URL}/prijava/uredi/${token}`;
 
   try {
-    const template = emailPotrebneIzmjene({
+    const emailContent = emailPotrebneIzmjene({
       ime: application.first_name,
       prezime: application.last_name,
       brojPrijave: application.application_number,
-      poruka: "Zatražili ste izmjenu postojeće prijave. Kliknite na poveznicu ispod za nastavak.",
+      poruka: "Molimo provjerite i ispravite podatke u prijavi.",
       magicLink,
     });
-    await sendEmail({ to: application.email, ...template });
-  } catch (emailError) {
-    console.error("Email error:", emailError);
-    return { error: "Greška pri slanju emaila." };
+    await sendEmail({ to: application.email, ...emailContent });
+  } catch (e) {
+    console.error("Email error:", e);
   }
 
   return { success: true };
@@ -474,7 +465,6 @@ export async function requestEditLinkForExisting(applicationId) {
 
 export async function bulkUpdateApplicationStatus(applicationIds, newStatus, adminMessage = null) {
   const results = { success: 0, failed: 0, errors: [] };
-
   for (const id of applicationIds) {
     const result = await updateApplicationStatus(id, newStatus, adminMessage);
     if (result.error) {
@@ -484,7 +474,6 @@ export async function bulkUpdateApplicationStatus(applicationIds, newStatus, adm
       results.success++;
     }
   }
-
   return results;
 }
 

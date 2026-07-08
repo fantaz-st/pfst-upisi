@@ -13,8 +13,9 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { applicationStatuses, statusesWithMessage } from "@/lib/applications/config";
 import { updateApplicationStatus, updateApplication } from "@/lib/applications/actions";
+import { createEnrollmentToken, sendEnrollmentInvite } from "@/lib/enrollments/actions";
 
-export default function ApplicationStatusControl({ applicationId, currentStatus, currentJmbag }) {
+export default function ApplicationStatusControl({ applicationId, currentStatus, currentJmbag, applicationEmail, applicationFirstName, applicationLastName, studyLevel, enrollmentIntakeId }) {
   const [loading, setLoading] = useState(null);
   const [messageModal, setMessageModal] = useState(false);
   const [jmbagModal, setJmbagModal] = useState(false);
@@ -72,6 +73,23 @@ export default function ApplicationStatusControl({ applicationId, currentStatus,
         setError(jmbagResult.error);
         setLoading(null);
         return;
+      }
+    }
+
+    // Ako je diplomska prijava — kreiraj enrollment token i pošalji mail
+    if (studyLevel === "diplomski" && enrollmentIntakeId) {
+      const tokenResult = await createEnrollmentToken(applicationId, enrollmentIntakeId);
+      if (tokenResult.success) {
+        try {
+          await sendEnrollmentInvite({
+            token: tokenResult.token,
+            email: applicationEmail,
+            firstName: applicationFirstName,
+            lastName: applicationLastName,
+          });
+        } catch (e) {
+          console.error("Email error:", e);
+        }
       }
     }
 

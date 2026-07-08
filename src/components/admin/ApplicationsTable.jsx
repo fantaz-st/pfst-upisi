@@ -28,11 +28,14 @@ import CircularProgress from "@mui/material/CircularProgress";
 import SearchIcon from "@mui/icons-material/Search";
 import RestoreIcon from "@mui/icons-material/Restore";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditIcon from "@mui/icons-material/Edit";
+import LinkIcon from "@mui/icons-material/Link";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import { applicationStatuses, getProgramShortCode, studyPrograms, statusesWithMessage } from "@/lib/applications/config";
 import { permanentDeleteApplications, restoreApplications } from "@/lib/admin/actions";
 import { bulkUpdateApplicationStatus, softDeleteApplication, bulkSoftDeleteApplications } from "@/lib/applications/actions";
+import { createEnrollmentToken, sendEnrollmentInvite } from "@/lib/enrollments/actions";
+import { createClient } from "@/lib/supabase/client";
 import styles from "@/app/admin/admin.module.css";
 
 function StatusChip({ status }) {
@@ -51,6 +54,7 @@ export default function ApplicationsTable({
   showAccess = false, // za sve-prijave — greyed out redovi
   isSuperAdmin = false,
   linkPrefix = "/admin/prijave",
+  intake = null, // cijeli intake objekt za kontekst
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -60,6 +64,27 @@ export default function ApplicationsTable({
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Bulk enrollment link
+  const [bulkEnrollmentLoading, setBulkEnrollmentLoading] = useState(false);
+  const [bulkEnrollmentResult, setBulkEnrollmentResult] = useState(null);
+  const [upisIntakes, setUpisIntakes] = useState([]);
+  const [selectedUpisIntakeId, setSelectedUpisIntakeId] = useState("");
+  const [bulkEnrollmentModal, setBulkEnrollmentModal] = useState(false);
+
+  // Dohvati upis_d intakee jednom
+  useState(() => {
+    const supabase = createClient();
+    supabase
+      .from("intakes")
+      .select("id, title, academic_year")
+      .eq("form_type", "upis_d")
+      .eq("is_visible", true)
+      .then(({ data }) => {
+        setUpisIntakes(data || []);
+        if (data?.length === 1) setSelectedUpisIntakeId(data[0].id);
+      });
+  });
 
   // Bulk status promjena (active mode)
   const [bulkStatusModal, setBulkStatusModal] = useState(false);
@@ -153,6 +178,42 @@ export default function ApplicationsTable({
     setBulkMessage("");
     setBulkResult(null);
     if (!error) router.refresh();
+  };
+
+  const handleBulkEnrollment = async () => {
+    if (!selectedUpisIntakeId) return;
+    setBulkEnrollmentLoading(true);
+    setBulkEnrollmentResult(null);
+    let success = 0,
+      failed = 0;
+
+    for (const id of selected) {
+      const app = filtered.find((a) => a.id === id);
+      if (!app) continue;
+      const tokenResult = await createEnrollmentToken(id, selectedUpisIntakeId);
+      if (tokenResult.error) {
+        failed++;
+        continue;
+      }
+      try {
+        await sendEnrollmentInvite({
+          token: tokenResult.token,
+          email: app.email,
+          firstName: app.first_name,
+          lastName: app.last_name,
+        });
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+
+    setBulkEnrollmentResult({ success, failed });
+    setBulkEnrollmentLoading(false);
+    if (failed === 0) {
+      setSelected([]);
+      router.refresh();
+    }
   };
 
   const handleDeleteClick = (ids) => {
@@ -316,11 +377,29 @@ export default function ApplicationsTable({
           >
             Promijeni status
           </Button>
+          {intake?.form_type === "prijava_d" &&
+            selected.every((id) => {
+              const app = filtered.find((a) => a.id === id);
+              return app?.status === "accepted";
+            }) &&
+            selected.length > 0 && (
+              <Button
+                size="small"
+                variant="contained"
+                color="success"
+                startIcon={bulkEnrollmentLoading ? <CircularProgress size={14} /> : <LinkIcon />}
+                onClick={() => setBulkEnrollmentModal(true)}
+                disabled={loading !== null || bulkEnrollmentLoading}
+                sx={{ borderRadius: "100px" }}
+              >
+                Pošalji linkove za upis
+              </Button>
+            )}
           <Button
             size="small"
             variant="outlined"
             color="error"
-            startIcon={<DeleteOutlineOutlinedIcon />}
+            startIcon={<DeleteOutlinedIcon />}
             onClick={() => handleDeleteClick(selected)}
             disabled={loading !== null}
             sx={{ borderRadius: "100px" }}
@@ -452,7 +531,7 @@ export default function ApplicationsTable({
                               disabled={loading !== null}
                               sx={{ borderRadius: "100px", fontSize: "0.75rem", minWidth: 0, px: 1 }}
                             >
-                              <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+                              <DeleteOutlinedIcon sx={{ fontSize: 16 }} />
                             </Button>
                           </Box>
                         ) : (
@@ -495,6 +574,69 @@ export default function ApplicationsTable({
         </DialogActions>
       </Dialog>
 
+      {/* ─── Bulk enrollment modal ──────────────────────── */}
+      <Dialog
+        open={bulkEnrollmentModal}
+        onClose={() => {
+          setBulkEnrollmentModal(false);
+          setBulkEnrollmentResult(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>Pošalji linkove za upis — {selected.length} prijava</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Svim odabranim kandidatima bit će poslan email s magic linkom za popunjavanje upisa na diplomski studij.
+          </Typography>
+          {upisIntakes.length > 1 && (
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Upis na diplomski</InputLabel>
+              <Select value={selectedUpisIntakeId} label="Upis na diplomski" onChange={(e) => setSelectedUpisIntakeId(e.target.value)}>
+                {upisIntakes.map((i) => (
+                  <MenuItem key={i.id} value={i.id}>
+                    {i.title} · {i.academic_year}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          {upisIntakes.length === 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Nema kreiranog "Upis (diplomski)" intakea. Kreirajte ga u Upravljanje upisima.
+            </Alert>
+          )}
+          {bulkEnrollmentResult && (
+            <Alert severity={bulkEnrollmentResult.failed === 0 ? "success" : "warning"}>
+              Poslano: {bulkEnrollmentResult.success} · Neuspjelo: {bulkEnrollmentResult.failed}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setBulkEnrollmentModal(false);
+              setBulkEnrollmentResult(null);
+            }}
+            disabled={bulkEnrollmentLoading}
+          >
+            {bulkEnrollmentResult ? "Zatvori" : "Odustani"}
+          </Button>
+          {!bulkEnrollmentResult && (
+            <Button
+              onClick={handleBulkEnrollment}
+              variant="contained"
+              color="success"
+              disabled={bulkEnrollmentLoading || !selectedUpisIntakeId}
+              startIcon={bulkEnrollmentLoading ? <CircularProgress size={16} /> : <LinkIcon />}
+              sx={{ borderRadius: "100px" }}
+            >
+              Pošalji svima
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
       {/* ─── Confirm soft delete (active) ─────────────── */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, color: "var(--blue-dark)" }}>Premjesti u otpad</DialogTitle>
@@ -515,7 +657,7 @@ export default function ApplicationsTable({
             variant="contained"
             color="error"
             disabled={loading !== null}
-            startIcon={loading === "softDelete" ? <CircularProgress size={16} /> : <DeleteOutlineOutlinedIcon />}
+            startIcon={loading === "softDelete" ? <CircularProgress size={16} /> : <DeleteOutlinedIcon />}
           >
             Premjesti u otpad
           </Button>

@@ -13,7 +13,7 @@ import ApplicationFormD from "@/components/application/ApplicationFormD";
 import styles from "./page.module.css";
 
 export async function generateMetadata() {
-  return { title: "Prijava — Pomorski fakultet Split" };
+  return { title: "Upis — Pomorski fakultet Split" };
 }
 
 export default async function ApplicationPage({ params }) {
@@ -40,16 +40,16 @@ export default async function ApplicationPage({ params }) {
       <div className={styles.main}>
         <Container maxWidth="md">
           <div className={styles.breadcrumb}>
-            <Link href="/" className={styles.breadcrumbLink}>Naslovnica</Link>
+            <Link href="/" className={styles.breadcrumbLink}>
+              Naslovnica
+            </Link>
             <span className={styles.breadcrumbSep}>/</span>
             <span className={styles.breadcrumbCurrent}>{intake.title}</span>
           </div>
 
           <div className={styles.pageHeader}>
             <span className={styles.pageEyebrow}>Akademska godina {intake.academic_year}</span>
-            <h1 className={styles.pageTitle}>
-              {applicationConfigs[slug]?.title ?? intake.title}
-            </h1>
+            <h1 className={styles.pageTitle}>{applicationConfigs[slug]?.title ?? intake.title}</h1>
           </div>
 
           {!intake.is_open ? (
@@ -57,16 +57,15 @@ export default async function ApplicationPage({ params }) {
               <div className={styles.closedIconWrap}>
                 <LockIcon sx={{ fontSize: 28, color: "var(--gray-400)" }} />
               </div>
-              <h2 className={styles.closedTitle}>Prijave nisu otvorene</h2>
+              <h2 className={styles.closedTitle}>Upis nije otvoren</h2>
               <p className={styles.closedText}>
-                Prijave za <strong>{intake.title}</strong> trenutno nisu otvorene.
-                Pratite našu web stranicu za informacije o rokovima upisa.
+                Upis na <strong>{intake.title}</strong> trenutno nije otvoren. Pratite našu web stranicu za informacije o rokovima upisa.
               </p>
               <Button href="/" variant="outlined" sx={{ borderRadius: "100px", px: 4 }}>
                 Povratak na naslovnicu
               </Button>
             </div>
-          ) : intake.study_level === "diplomski" ? (
+          ) : intake.form_type === "prijava_d" ? (
             <ApplicationFormD intake={intake} />
           ) : (
             <ApplicationForm intake={intake} />

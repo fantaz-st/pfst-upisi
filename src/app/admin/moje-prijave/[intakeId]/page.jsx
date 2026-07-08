@@ -18,7 +18,7 @@ export default async function MyIntakePage({ params }) {
 
   const { data: intake } = await supabase
     .from("intakes")
-    .select("id, title, academic_year, study_level, is_open")
+    .select("id, title, academic_year, study_level, form_type, is_open")
     .eq("id", intakeId)
     .single();
 
@@ -51,7 +51,7 @@ export default async function MyIntakePage({ params }) {
         </div>
       </div>
 
-      <ApplicationsTable applications={applications ?? []} mode="active" />
+      <ApplicationsTable applications={applications ?? []} mode="active" intake={intake} />
     </Container>
   );
 }

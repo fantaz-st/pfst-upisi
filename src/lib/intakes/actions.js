@@ -19,23 +19,31 @@ export async function toggleIntakeVisible(id, value) {
   return { success: true };
 }
 
-export async function createIntake({ title, academic_year, slug, study_level, short_description, sort_order, adminIds }) {
+export async function createIntake({
+  title, academic_year, slug, study_level, form_type,
+  short_description, sort_order, adminIds,
+  diplomski_period_from, diplomski_period_to,
+  elective_courses, elective_requirements,
+}) {
   const supabase = await createClient();
 
   const { data: intake, error } = await supabase
     .from("intakes")
     .insert({
       title, academic_year, slug, study_level,
+      form_type: form_type || (study_level === "diplomski" ? "prijava_d" : "upis_pd"),
       short_description,
       sort_order: sort_order || 0,
       is_visible: false,
       is_open: false,
+      ...(study_level === "diplomski" ? { diplomski_period_from, diplomski_period_to } : {}),
     })
     .select()
     .single();
 
   if (error) return { error: error.message };
 
+  // Dodaj admine
   if (adminIds?.length > 0) {
     const { error: adminError } = await supabase
       .from("intake_admins")
@@ -43,27 +51,64 @@ export async function createIntake({ title, academic_year, slug, study_level, sh
     if (adminError) return { error: adminError.message };
   }
 
+  // Dodaj izborne predmete (samo za upis_d)
+  if (form_type === "upis_d" && elective_courses?.length > 0) {
+    const { error: courseError } = await supabase
+      .from("elective_courses")
+      .insert(elective_courses.map(c => ({ ...c, intake_id: intake.id })));
+    if (courseError) return { error: courseError.message };
+  }
+
+  // Dodaj minimalne bodove (samo za upis_d)
+  if (form_type === "upis_d" && elective_requirements?.length > 0) {
+    const { error: reqError } = await supabase
+      .from("elective_requirements")
+      .insert(elective_requirements.map(r => ({ ...r, intake_id: intake.id })));
+    if (reqError) return { error: reqError.message };
+  }
+
   revalidatePath("/admin/upisi");
   return { success: true, intake };
 }
 
-export async function updateIntake({ id, title, academic_year, slug, study_level, short_description, sort_order, adminIds }) {
+export async function updateIntake({
+  id, title, academic_year, slug, study_level, form_type,
+  short_description, sort_order, adminIds,
+  diplomski_period_from, diplomski_period_to,
+  elective_courses, elective_requirements,
+}) {
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("intakes")
-    .update({ title, academic_year, slug, study_level, short_description, sort_order })
-    .eq("id", id);
+  const { error } = await supabase.from("intakes").update({
+    title, academic_year, slug, study_level, form_type,
+    short_description, sort_order,
+    ...(study_level === "diplomski" ? { diplomski_period_from, diplomski_period_to } : {}),
+  }).eq("id", id);
 
   if (error) return { error: error.message };
 
+  // Refresh admins
   await supabase.from("intake_admins").delete().eq("intake_id", id);
-
   if (adminIds?.length > 0) {
     const { error: adminError } = await supabase
       .from("intake_admins")
       .insert(adminIds.map(user_id => ({ intake_id: id, user_id })));
     if (adminError) return { error: adminError.message };
+  }
+
+  // Refresh izborni predmeti (samo za upis_d)
+  if (form_type === "upis_d") {
+    await supabase.from("elective_courses").delete().eq("intake_id", id);
+    await supabase.from("elective_requirements").delete().eq("intake_id", id);
+
+    if (elective_courses?.length > 0) {
+      await supabase.from("elective_courses")
+        .insert(elective_courses.map(c => ({ ...c, intake_id: id })));
+    }
+    if (elective_requirements?.length > 0) {
+      await supabase.from("elective_requirements")
+        .insert(elective_requirements.map(r => ({ ...r, intake_id: id })));
+    }
   }
 
   revalidatePath("/admin/upisi");
@@ -88,73 +133,23 @@ export async function deleteIntake(id) {
   return { success: true };
 }
 
-// ─── Lista kandidata ───────────────────────────────────────
-
-export async function uploadCandidateList({ intakeId, program, study_type, candidates }) {
+export async function getElectiveCourses(intakeId) {
   const supabase = await createClient();
-
-  // Obriši postojeću listu za ovaj intake+program+study_type
-  await supabase
-    .from("intake_eligible_candidates")
-    .delete()
+  const { data } = await supabase
+    .from("elective_courses")
+    .select("*")
     .eq("intake_id", intakeId)
-    .eq("program", program)
-    .eq("study_type", study_type);
-
-  if (!candidates?.length) return { success: true, count: 0 };
-
-  // Insert novi
-  const rows = candidates.map(c => ({
-    intake_id: intakeId,
-    program,
-    study_type,
-    oib: c.oib,
-    first_name: c.first_name || null,
-    last_name: c.last_name || null,
-    email: c.email || null,
-  }));
-
-  const { error } = await supabase.from("intake_eligible_candidates").insert(rows);
-  if (error) return { error: error.message };
-
-  revalidatePath("/admin/upisi");
-  return { success: true, count: rows.length };
+    .order("program")
+    .order("semester")
+    .order("sort_order");
+  return data || [];
 }
 
-export async function deleteCandidateList({ intakeId, program, study_type }) {
+export async function getElectiveRequirements(intakeId) {
   const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("intake_eligible_candidates")
-    .delete()
-    .eq("intake_id", intakeId)
-    .eq("program", program)
-    .eq("study_type", study_type);
-
-  if (error) return { error: error.message };
-  revalidatePath("/admin/upisi");
-  return { success: true };
-}
-
-export async function getCandidateLists(intakeId) {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("intake_eligible_candidates")
-    .select("program, study_type")
+  const { data } = await supabase
+    .from("elective_requirements")
+    .select("*")
     .eq("intake_id", intakeId);
-
-  if (error) return [];
-
-  // Grupiraj po program+study_type i vrati count
-  const groups = {};
-  for (const row of data || []) {
-    const key = `${row.program}__${row.study_type}`;
-    groups[key] = (groups[key] || 0) + 1;
-  }
-
-  return Object.entries(groups).map(([key, count]) => {
-    const [program, study_type] = key.split("__");
-    return { program, study_type, count };
-  });
+  return data || [];
 }

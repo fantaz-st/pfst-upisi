@@ -10,6 +10,7 @@ import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { applicationStatuses, getProgramLabel, studyTypes, enrollmentTypeOptions } from "@/lib/applications/config";
 import ApplicationStatusControl from "@/components/admin/ApplicationStatusControl";
+import EnrollmentLinkButton from "@/components/admin/EnrollmentLinkButton";
 import ApplicationNotes from "@/components/admin/ApplicationNotes";
 import DocumentsList from "@/components/admin/DocumentsList";
 import ApplicationActions from "@/components/admin/ApplicationActions";
@@ -23,7 +24,7 @@ export default async function ApplicationDetailPage({ params }) {
 
   const { data: application, error } = await supabase
     .from("applications")
-    .select(`*, intakes ( title, academic_year, slug, study_level ), application_documents ( * ), application_notes ( *, admin_id )`)
+    .select(`*, intakes ( id, title, academic_year, slug, study_level, form_type ), application_documents ( * ), application_notes ( *, admin_id )`)
     .eq("id", id)
     .single();
 
@@ -40,12 +41,15 @@ export default async function ApplicationDetailPage({ params }) {
   const studyTypeLabel = studyTypes.find((t) => t.value === application.study_type)?.label || application.study_type;
   const otherDocs = application.application_documents?.filter((d) => d.document_type !== "photo") ?? [];
 
-  const InfoRow = ({ label, value }) => (
-    <div className={styles.infoRow}>
-      <span className={styles.infoLabel}>{label}</span>
-      <span className={styles.infoValue}>{value ?? "—"}</span>
-    </div>
-  );
+  const InfoRow = ({ label, value }) => {
+    if (value === null || value === undefined || value === "") return null;
+    return (
+      <div className={styles.infoRow}>
+        <span className={styles.infoLabel}>{label}</span>
+        <span className={styles.infoValue}>{value}</span>
+      </div>
+    );
+  };
 
   const SectionDivider = ({ label }) => (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, my: 1.5 }}>
@@ -112,18 +116,28 @@ export default async function ApplicationDetailPage({ params }) {
             <InfoRow label="Izjava o upisu" value={application.enrollment_type ? enrollmentTypeOptions.find((o) => o.value === application.enrollment_type)?.label : null} />
           </div>
 
-          {/* Roditelji */}
-          <div className={styles.sectionPaper}>
-            <div className={styles.sectionTitle}>Podaci o roditeljima</div>
-            <SectionDivider label="Otac" />
-            <InfoRow label="Ime" value={application.father_name} />
-            <InfoRow label="Zvanje i zanimanje" value={application.father_occupation} />
-            <InfoRow label="Adresa" value={application.father_address} />
-            <SectionDivider label="Majka" />
-            <InfoRow label="Ime" value={application.mother_name} />
-            <InfoRow label="Zvanje i zanimanje" value={application.mother_occupation} />
-            <InfoRow label="Adresa" value={application.mother_address} />
-          </div>
+          {/* Roditelji — samo ako postoje podaci */}
+          {(application.father_name || application.mother_name) && (
+            <div className={styles.sectionPaper}>
+              <div className={styles.sectionTitle}>Podaci o roditeljima</div>
+              {application.father_name && (
+                <>
+                  <SectionDivider label="Otac" />
+                  <InfoRow label="Ime" value={application.father_name} />
+                  <InfoRow label="Zvanje i zanimanje" value={application.father_occupation} />
+                  <InfoRow label="Adresa" value={application.father_address} />
+                </>
+              )}
+              {application.mother_name && (
+                <>
+                  <SectionDivider label="Majka" />
+                  <InfoRow label="Ime" value={application.mother_name} />
+                  <InfoRow label="Zvanje i zanimanje" value={application.mother_occupation} />
+                  <InfoRow label="Adresa" value={application.mother_address} />
+                </>
+              )}
+            </div>
+          )}
 
           {/* Obrazovanje */}
           <div className={styles.sectionPaper}>
@@ -145,7 +159,25 @@ export default async function ApplicationDetailPage({ params }) {
         <Grid size={{ xs: 12, md: 4 }}>
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Promjena statusa</div>
-            <ApplicationStatusControl applicationId={application.id} currentStatus={application.status} currentJmbag={application.jmbag} userId={user?.id} />
+            <ApplicationStatusControl
+              applicationId={application.id}
+              currentStatus={application.status}
+              currentJmbag={application.jmbag}
+              applicationEmail={application.email}
+              applicationFirstName={application.first_name}
+              applicationLastName={application.last_name}
+              studyLevel={application.intakes?.study_level}
+              enrollmentIntakeId={application.intakes?.id}
+            />
+            {application.intakes?.form_type === "prijava_d" && application.status === "accepted" && (
+              <EnrollmentLinkButton
+                applicationId={application.id}
+                intakeId={application.intakes?.id}
+                applicationEmail={application.email}
+                firstName={application.first_name}
+                lastName={application.last_name}
+              />
+            )}
           </div>
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Interne bilješke</div>

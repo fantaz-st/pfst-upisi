@@ -219,6 +219,18 @@ export default function AdminNav() {
         {isSuperAdmin && (
           <>
             {(() => {
+              const active = isActive("/admin/upisi-diplomski");
+              return (
+                <ListItemButton component={Link} href="/admin/upisi-diplomski" sx={navItemSx(active)}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <SchoolIcon sx={iconSx(active)} />
+                  </ListItemIcon>
+                  <ListItemText primary="Upisi (diplomski)" slotProps={{ primary: { sx: textSx(active) } }} />
+                  {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
+                </ListItemButton>
+              );
+            })()}
+            {(() => {
               const active = isActive("/admin/korisnici");
               return (
                 <ListItemButton component={Link} href="/admin/korisnici" sx={navItemSx(active)}>

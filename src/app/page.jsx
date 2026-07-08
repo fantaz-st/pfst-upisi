@@ -7,9 +7,9 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
-import Image from "next/image";
 import { getVisibleIntakes } from "@/lib/intakes/queries";
 import IntakeCards from "@/components/landing/IntakeCards";
+import Header from "@/components/landing/Header";
 import styles from "./page.module.css";
 
 export const revalidate = 60;
@@ -42,42 +42,52 @@ export default async function HomePage() {
     <Box>
       {/* Hero */}
       <Box className={styles.hero}>
-        <div className={styles.heroPattern} />
-        <div className={styles.heroGrid} />
-
-        {/* Decorativni logo u pozadini */}
-        <div className={styles.heroLogoBg}>
-          <Image src="/logo-white.svg" alt="" width={700} height={600} className={styles.heroLogoBgImg} aria-hidden="true" />
-        </div>
+        <Header />
+        <div className={styles.heroDiagonal} />
+        <div className={styles.heroDiagonal2} />
+        <div className={styles.heroShapeLight} />
+        <div className={styles.heroShape} />
 
         <Container maxWidth="lg" className={styles.heroContent}>
-          <Box className={styles.heroEyebrow}>
-            <span className={styles.heroEyebrowDot} />
-            <span className={styles.heroEyebrowText}>Akademska godina 2026./2027.</span>
-          </Box>
+          <div className={styles.heroTextWrap}>
+            <Typography variant="h2" className={styles.heroTitle}>
+              Upisi na
+              <br />
+              Pomorski fakultet
+            </Typography>
 
-          <Typography variant="h1" className={styles.heroTitle}>
-            Upisi na
-            <br />
-            <span className={styles.heroTitleAccent}>Pomorski fakultet</span>
-          </Typography>
+            <div className={styles.heroDash} />
 
-          <Typography className={styles.heroSubtitle}>Odaberite jednu od ponuđenih prijava i ispunite je. Priložite tražene dokumente i pratite status vaše prijave.</Typography>
+            <p className={styles.heroSubtitle}>
+              Odaberite jednu od ponuđenih prijava i ispunite je. <br className={styles.subBreak} />
+              Priložite tražene dokumente i pratite status vaše prijave.
+            </p>
 
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 4 }}>
-            <Button href="#upisi" size="large" variant="outlined">
-              Pogledaj studije
-            </Button>
-            <Button href="/status" size="large" variant="contained">
-              Provjeri status
-            </Button>
-          </Box>
+            <div className={styles.heroActions}>
+              <a href="#upisi" className={styles.heroCta}>
+                <AssignmentIcon sx={{ fontSize: 19 }} />
+                Pregled prijava
+                <span className={styles.heroCtaArrow}>→</span>
+              </a>
+              <a href="/status" className={styles.heroCtaOutline}>
+                <TrackChangesIcon sx={{ fontSize: 19 }} />
+                Provjeri status
+              </a>
+            </div>
+          </div>
         </Container>
+      </Box>
 
-        <Box className={styles.scrollIndicator}>
-          <span className={styles.scrollText}>scroll</span>
-          <div className={styles.scrollLine} />
-        </Box>
+      {/* Intakes */}
+      <Box id="upisi" className={styles.intakesSection}>
+        <Container maxWidth="lg">
+          <span className={styles.sectionEyebrow}>Dostupne prijave</span>
+          <Typography variant="h2" className={styles.sectionTitle}>
+            Otvorene prijave
+          </Typography>
+          {/* <Typography className={styles.sectionSubtitle}>Odaberite jednu od otvorenih prijava i ispunite obrazac za upis.</Typography> */}
+          <IntakeCards intakes={intakes} />
+        </Container>
       </Box>
 
       {/* Status strip */}
@@ -87,7 +97,7 @@ export default async function HomePage() {
             <Box className={styles.statusStripLeft}>
               <span className={styles.statusStripDot} />
               <Box>
-                <div className={styles.statusStripText}>Već ste podnijeli prijavu?</div>
+                <div className={styles.statusStripText}>Već ste predali podatke za prijavu ili upis?</div>
                 <div className={styles.statusStripSub}>Provjerite status unosom broja prijave i OIB-a</div>
               </Box>
             </Box>
@@ -107,18 +117,6 @@ export default async function HomePage() {
               Provjeri status
             </Button>
           </Box>
-        </Container>
-      </Box>
-
-      {/* Intakes */}
-      <Box id="upisi" className={styles.intakesSection}>
-        <Container maxWidth="lg">
-          <span className={styles.sectionEyebrow}>Dostupne prijave</span>
-          <Typography variant="h2" className={styles.sectionTitle}>
-            Otvorene prijave
-          </Typography>
-          {/* <Typography className={styles.sectionSubtitle}>Odaberite jednu od otvorenih prijava i ispunite obrazac za upis.</Typography> */}
-          <IntakeCards intakes={intakes} />
         </Container>
       </Box>
 

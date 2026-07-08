@@ -14,10 +14,6 @@ function validateOib(oib) {
   return check === parseInt(oib[10]);
 }
 
-export const enrollmentSchema = z.object({
-  enrollment_type: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.null()]).optional(),
-});
-
 export const personalInfoSchema = z.object({
   first_name: z.string().min(2, "Ime mora imati najmanje 2 znaka"),
   last_name: z.string().min(2, "Prezime mora imati najmanje 2 znaka"),
@@ -25,40 +21,47 @@ export const personalInfoSchema = z.object({
   phone: z.string().min(9, "Unesite valjani broj mobitela").optional().or(z.literal("")),
   oib: z.string().length(11, "OIB mora imati točno 11 znamenki").refine(validateOib, { message: "OIB nije valjan" }),
   birth_date: z.string().min(1, "Datum rođenja je obavezan"),
-  birth_place: z.string().min(2, "Mjesto rođenja je obavezno"),
-  gender: z.enum(["muški", "ženski", "ostalo"], { errorMap: () => ({ message: "Odaberite spol" }) }),
-  marital_status: z.string().min(1, "Bračno stanje je obavezno"),
   citizenship: z.string().min(2, "Državljanstvo je obavezno"),
   address: z.string().min(5, "Adresa je obavezna"),
   city: z.string().min(2, "Grad je obavezan"),
   postal_code: z.string().min(5, "Poštanski broj je obavezan"),
   program: z.string().min(1, "Odabir studija je obavezan"),
-  study_type: z.enum(["redoviti", "izvanredni"], { errorMap: () => ({ message: "Odaberite vrstu studiranja" }) }),
-});
-
-export const parentsSchema = z.object({
-  father_name: z.string().optional().or(z.literal("")),
-  father_occupation: z.string().optional().or(z.literal("")),
-  father_address: z.string().optional().or(z.literal("")),
-  mother_name: z.string().optional().or(z.literal("")),
-  mother_occupation: z.string().optional().or(z.literal("")),
-  mother_address: z.string().optional().or(z.literal("")),
+  study_type: z.enum(["redoviti", "izvanredni"], {
+    errorMap: () => ({ message: "Odaberite vrstu studiranja" }),
+  }),
 });
 
 export const educationSchema = z.object({
   previous_institution: z.string().min(3, "Naziv ustanove je obavezan"),
   previous_program: z.string().min(2, "Program/smjer je obavezan"),
   previous_completion_year: z.string().regex(/^\d{4}$/, "Unesite valjanu godinu (npr. 2024)"),
-  other_education: z.string().optional().or(z.literal("")),
-  ranking_score: z.string().optional().or(z.literal("")),
 });
 
 export const consentSchema = z.object({
-  consent: z.literal(true, { errorMap: () => ({ message: "Morate prihvatiti uvjete za nastavak" }) }),
+  consent: z.literal(true, {
+    errorMap: () => ({ message: "Morate prihvatiti uvjete za nastavak" }),
+  }),
 });
 
-export const fullApplicationSchema = personalInfoSchema
-  .merge(parentsSchema)
-  .merge(educationSchema)
-  .merge(enrollmentSchema)
-  .merge(consentSchema);
+export const fullApplicationSchema = personalInfoSchema.merge(educationSchema).merge(consentSchema);
+
+export const diplomskiApplicationSchema = z.object({
+  program: z.string().min(1, "Odaberite studij"),
+  study_type: z.enum(["redoviti", "izvanredni"]),
+  previous_study_institution: z.enum(["pfst_current", "pfst_previous", "other"], {
+    errorMap: () => ({ message: "Odaberite gdje ste završili prijediplomski studij" }),
+  }),
+  first_name: z.string().min(1, "Obavezno polje"),
+  last_name: z.string().min(1, "Obavezno polje"),
+  oib: z.string().length(11, "OIB mora imati 11 znamenki"),
+  phone: z.string().min(1, "Obavezno polje"),
+  email: z.string().email("Unesite ispravnu email adresu"),
+  birth_date: z.string().min(1, "Obavezno polje"),
+  father_name: z.string().optional(),
+  address: z.string().min(1, "Obavezno polje"),
+  city: z.string().min(1, "Obavezno polje"),
+  postal_code: z.string().min(1, "Obavezno polje"),
+  country: z.string().min(1, "Obavezno polje"),
+  previous_completion_year: z.string().regex(/^\d{4}$/, "Unesite valjanu godinu"),
+  consent: z.literal(true, { errorMap: () => ({ message: "Morate prihvatiti uvjete" }) }),
+});

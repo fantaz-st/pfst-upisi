@@ -2,12 +2,20 @@
 
 import Button from "@mui/material/Button";
 import SchoolIcon from "@mui/icons-material/School";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import LockIcon from "@mui/icons-material/Lock";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { getFormTypeConfig } from "@/lib/applications/config";
 import styles from "./IntakeCard.module.css";
 
 export default function IntakeCard({ intake }) {
   const isOpen = intake.is_open;
+  const formConfig = getFormTypeConfig(intake.form_type || (intake.study_level === "diplomski" ? "prijava_d" : "upis_pd"));
+  const isPrijava = intake.form_type === "prijava_d";
+  const route = `${formConfig.route}/${intake.slug}`;
+  const openLabel = isPrijava ? "Prijave otvorene" : "Upis otvoren";
+  const closedLabel = isPrijava ? "Prijave zatvorene" : "Upis zatvoren";
+  const StatusIcon = isPrijava ? AssignmentIcon : SchoolIcon;
 
   return (
     <div className={`${styles.card} ${isOpen ? styles.open : styles.closed}`}>
@@ -17,19 +25,17 @@ export default function IntakeCard({ intake }) {
       <div className={styles.content}>
         <div className={styles.header}>
           <div className={`${styles.iconWrap} ${isOpen ? styles.open : styles.closed}`}>
-            <SchoolIcon sx={{ fontSize: 22 }} />
+            <StatusIcon sx={{ fontSize: 22 }} />
           </div>
           <div className={`${styles.statusBadge} ${isOpen ? styles.open : styles.closed}`}>
             <span className={`${styles.statusDot} ${isOpen ? styles.open : styles.closed}`} />
-            {isOpen ? "Prijave otvorene" : "Prijave zatvorene"}
+            {isOpen ? openLabel : closedLabel}
           </div>
         </div>
 
         <h3 className={styles.title}>{intake.title}</h3>
 
-        {intake.short_description && (
-          <p className={styles.description}>{intake.short_description}</p>
-        )}
+        {intake.short_description && <p className={styles.description}>{intake.short_description}</p>}
 
         <div className={styles.academicYear}>
           <span className={styles.academicYearDot} />
@@ -40,7 +46,7 @@ export default function IntakeCard({ intake }) {
       <div className={styles.actions}>
         {isOpen ? (
           <Button
-            href={`/prijava/${intake.slug}`}
+            href={route}
             variant="contained"
             fullWidth
             size="large"
@@ -53,20 +59,10 @@ export default function IntakeCard({ intake }) {
               "&:hover": { background: "var(--blue-dark)" },
             }}
           >
-            Prijavi se
+            {formConfig.btnLabel}
           </Button>
         ) : (
-          <Button
-            variant="outlined"
-            fullWidth
-            disabled
-            startIcon={<LockIcon />}
-            sx={{
-              borderRadius: "100px",
-              py: 1.5,
-              borderStyle: "dashed",
-            }}
-          >
+          <Button variant="outlined" fullWidth disabled startIcon={<LockIcon />} sx={{ borderRadius: "100px", py: 1.5, borderStyle: "dashed" }}>
             Zatvoreno
           </Button>
         )}

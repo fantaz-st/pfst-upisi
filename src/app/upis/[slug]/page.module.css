@@ -1,0 +1,125 @@
+.page {
+  min-height: 100vh;
+  background: var(--gray-50);
+}
+
+.topBar {
+  background: var(--blue-dark);
+  padding: 16px 0;
+}
+
+.topBarInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topBarLogo {
+  filter: brightness(0) invert(1);
+  height: 70px;
+  width: auto;
+}
+
+.topBarBack {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.topBarBack:hover {
+  color: white;
+}
+
+.main {
+  padding: 48px 0 80px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  font-size: 0.82rem;
+  color: var(--gray-400);
+}
+
+.breadcrumbLink {
+  color: var(--gray-400);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.breadcrumbLink:hover {
+  color: var(--blue-main);
+}
+
+.breadcrumbSep {
+  color: var(--gray-300);
+}
+
+.breadcrumbCurrent {
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.pageHeader {
+  margin-bottom: 40px;
+}
+
+.pageEyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--blue-main);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.pageTitle {
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 700;
+  color: var(--blue-dark);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.closedCard {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xl);
+  padding: 64px 48px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.closedIconWrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.closedTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  margin-bottom: 12px;
+}
+
+.closedText {
+  font-size: 0.95rem;
+  color: var(--gray-500);
+  line-height: 1.6;
+  max-width: 380px;
+  margin: 0 auto 32px;
+}

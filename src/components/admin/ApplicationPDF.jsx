@@ -103,12 +103,15 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 7, color: "#94a3b8" },
 });
 
-const DataRow = ({ label, value, bold = false }) => (
-  <View style={styles.dataRow}>
-    <Text style={styles.dataLabel}>{label}:</Text>
-    <Text style={[styles.dataValue, bold && styles.dataValueBold]}>{value || "—"}</Text>
-  </View>
-);
+const DataRow = ({ label, value, bold = false }) => {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <View style={styles.dataRow}>
+      <Text style={styles.dataLabel}>{label}:</Text>
+      <Text style={[styles.dataValue, bold && styles.dataValueBold]}>{value}</Text>
+    </View>
+  );
+};
 
 const enrollmentTypeLabels = {
   1: "PRVI put upisujem I. godinu studija kao student u redovitom statusu",
@@ -200,8 +203,9 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
 
         {/* Roditelji */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PODACI O RODITELJIMA</Text>
-          <View style={styles.twoCol}>
+          {(application.father_name || application.mother_name) && <>
+            <Text style={styles.sectionTitle}>PODACI O RODITELJIMA</Text>
+<View style={styles.twoCol}>
             <View style={styles.colHalf}>
               <Text style={styles.subTitle}>Otac</Text>
               <DataRow label="Ime" value={application.father_name} />
@@ -215,6 +219,7 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
               <DataRow label="Adresa" value={application.mother_address} />
             </View>
           </View>
+          </>}
         </View>
 
         {/* Upis + Obrazovanje u dva stupca */}
