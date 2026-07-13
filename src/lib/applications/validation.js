@@ -30,6 +30,19 @@ export const personalInfoSchema = z.object({
     errorMap: () => ({ message: "Odaberite vrstu studiranja" }),
   }),
   enrollment_type: z.number().int().min(1).max(4).nullish(),
+  // Opcionalna polja specifična za upis_pd (izravni upis).
+  // Zodresolver bi ih inače stripao, pa ih moramo eksplicitno dopustiti.
+  birth_place: z.string().nullish(),
+  gender: z.enum(["muški", "ženski", "ostalo"]).or(z.literal("")).nullish(),
+  marital_status: z.string().nullish(),
+  father_name: z.string().nullish(),
+  father_occupation: z.string().nullish(),
+  father_address: z.string().nullish(),
+  mother_name: z.string().nullish(),
+  mother_occupation: z.string().nullish(),
+  mother_address: z.string().nullish(),
+  other_education: z.string().nullish(),
+  ranking_score: z.string().nullish(),
 });
 
 export const educationSchema = z.object({

@@ -33,6 +33,9 @@ export async function submitApplication(formData, slug) {
     phone,
     oib,
     birth_date,
+    birth_place,
+    gender,
+    marital_status,
     citizenship,
     address,
     city,
@@ -40,10 +43,21 @@ export async function submitApplication(formData, slug) {
     program,
     study_type,
     enrollment_type,
+    father_name,
+    father_occupation,
+    father_address,
+    mother_name,
+    mother_occupation,
+    mother_address,
     previous_institution,
     previous_program,
     previous_completion_year,
+    other_education,
+    ranking_score,
   } = parsed.data;
+
+  // Prazan string ("") pretvori u null da ne puknu CHECK/nullability constraint-i
+  const nz = (v) => (v === "" || v === undefined ? null : v);
 
   const application_number = generateApplicationNumber();
 
@@ -55,9 +69,12 @@ export async function submitApplication(formData, slug) {
       first_name,
       last_name,
       email,
-      phone: phone || null,
+      phone: nz(phone),
       oib,
       birth_date,
+      birth_place: nz(birth_place),
+      gender: nz(gender),
+      marital_status: nz(marital_status),
       citizenship,
       address,
       city,
@@ -65,9 +82,17 @@ export async function submitApplication(formData, slug) {
       program,
       study_type,
       enrollment_type: enrollment_type ?? null,
+      father_name: nz(father_name),
+      father_occupation: nz(father_occupation),
+      father_address: nz(father_address),
+      mother_name: nz(mother_name),
+      mother_occupation: nz(mother_occupation),
+      mother_address: nz(mother_address),
       previous_institution,
       previous_program,
       previous_completion_year,
+      other_education: nz(other_education),
+      ranking_score: nz(ranking_score),
       status: "submitted",
       submitted_at: new Date().toISOString(),
     })

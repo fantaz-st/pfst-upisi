@@ -75,6 +75,18 @@ export default async function ApplicationPrintPage({ params }) {
                   <td className="value-cell">{application.birth_date ? new Date(application.birth_date).toLocaleDateString("hr-HR") : "—"}</td>
                 </tr>
                 <tr>
+                  <td className="label-cell">Mjesto rođenja:</td>
+                  <td className="value-cell">{application.birth_place || "—"}</td>
+                </tr>
+                <tr>
+                  <td className="label-cell">Spol:</td>
+                  <td className="value-cell">{application.gender ? application.gender.charAt(0).toUpperCase() + application.gender.slice(1) : "—"}</td>
+                </tr>
+                <tr>
+                  <td className="label-cell">Bračno stanje:</td>
+                  <td className="value-cell">{application.marital_status || "—"}</td>
+                </tr>
+                <tr>
                   <td className="label-cell">Državljanstvo:</td>
                   <td className="value-cell">{application.citizenship}</td>
                 </tr>
@@ -107,6 +119,51 @@ export default async function ApplicationPrintPage({ params }) {
             </table>
           </div>
 
+          {/* Podaci o roditeljima */}
+          {(application.father_name || application.mother_name ||
+            application.father_occupation || application.mother_occupation ||
+            application.father_address || application.mother_address) && (
+            <div className="section">
+              <h3>PODACI O RODITELJIMA</h3>
+              <table className="data-table">
+                <tbody>
+                  {(application.father_name || application.father_occupation || application.father_address) && (
+                    <>
+                      <tr>
+                        <td className="label-cell"><strong>Otac — ime:</strong></td>
+                        <td className="value-cell">{application.father_name || "—"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label-cell">Otac — zanimanje:</td>
+                        <td className="value-cell">{application.father_occupation || "—"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label-cell">Otac — adresa:</td>
+                        <td className="value-cell">{application.father_address || "—"}</td>
+                      </tr>
+                    </>
+                  )}
+                  {(application.mother_name || application.mother_occupation || application.mother_address) && (
+                    <>
+                      <tr>
+                        <td className="label-cell"><strong>Majka — ime:</strong></td>
+                        <td className="value-cell">{application.mother_name || "—"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label-cell">Majka — zanimanje:</td>
+                        <td className="value-cell">{application.mother_occupation || "—"}</td>
+                      </tr>
+                      <tr>
+                        <td className="label-cell">Majka — adresa:</td>
+                        <td className="value-cell">{application.mother_address || "—"}</td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* Study Info */}
           <div className="section">
             <h3>PODACI O UPISU</h3>
@@ -128,6 +185,10 @@ export default async function ApplicationPrintPage({ params }) {
                   <td className="label-cell">Vrsta studiranja:</td>
                   <td className="value-cell">{studyTypeLabel}</td>
                 </tr>
+                <tr>
+                  <td className="label-cell">Plasman na rang listi:</td>
+                  <td className="value-cell">{application.ranking_score || "—"}</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -148,6 +209,10 @@ export default async function ApplicationPrintPage({ params }) {
                 <tr>
                   <td className="label-cell">Godina završetka:</td>
                   <td className="value-cell">{application.previous_completion_year || "—"}</td>
+                </tr>
+                <tr>
+                  <td className="label-cell">Drugi fakultet / viša škola:</td>
+                  <td className="value-cell">{application.other_education || "—"}</td>
                 </tr>
               </tbody>
             </table>
