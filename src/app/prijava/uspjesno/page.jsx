@@ -32,9 +32,7 @@ export default async function SuccessPage({ searchParams }) {
           </div>
 
           <h1 className={styles.title}>Prijava zaprimljena</h1>
-          <p className={styles.subtitle}>
-            Vaša prijava je uspješno zaprimljena. Fakultetska komisija pregledat će vašu dokumentaciju i kontaktirati vas putem email adrese.
-          </p>
+          <p className={styles.subtitle}>Vaša prijava je uspješno zaprimljena. Studentska referada će pregledati vašu dokumentaciju i kontaktirati vas putem email adrese.</p>
 
           {applicationNumber && (
             <>
@@ -43,9 +41,7 @@ export default async function SuccessPage({ searchParams }) {
                 <span className={styles.numberLabel}>Broj prijave</span>
                 <div className={styles.numberValue}>{applicationNumber}</div>
               </div>
-              <p className={styles.hint}>
-                Sačuvajte ovaj broj — potreban je za provjeru statusa prijave.
-              </p>
+              <p className={styles.hint}>Sačuvajte ovaj broj — potreban je za provjeru statusa prijave.</p>
             </>
           )}
 

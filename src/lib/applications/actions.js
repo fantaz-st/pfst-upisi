@@ -144,7 +144,7 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: application } = await supabase.from("applications").select("*, intakes ( title, academic_year )").eq("id", applicationId).single();
+  const { data: application } = await supabase.from("applications").select("*, intakes ( title, academic_year, study_level )").eq("id", applicationId).single();
 
   if (!application) return { error: "Prijava nije pronađena." };
 
@@ -196,6 +196,7 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
         brojPrijave: application.application_number,
         studij: programLabel,
         akademskaGodina,
+        studyLevel: application.intakes?.study_level,
       });
       await sendEmail({ to: application.email, ...template });
     } else if (newStatus === "rejected") {
@@ -294,9 +295,17 @@ export async function getSignedDocumentUrl(filePath) {
 
 export async function updateApplication(applicationId, formData) {
   const supabase = await createClient();
+
+  // Prazan string ("") iz Select/TextField polja pretvori u null —
+  // inače puca na CHECK constraintima (npr. gender, previous_study_institution)
+  // koji dopuštaju null, ali ne i prazan string.
+  const sanitized = Object.fromEntries(
+    Object.entries(formData).map(([key, value]) => [key, value === "" ? null : value])
+  );
+
   const { error } = await supabase
     .from("applications")
-    .update({ ...formData, updated_at: new Date().toISOString() })
+    .update({ ...sanitized, updated_at: new Date().toISOString() })
     .eq("id", applicationId);
   if (error) return { error: error.message };
   return { success: true };

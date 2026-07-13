@@ -29,7 +29,7 @@ export default async function AdminHomePage({ searchParams }) {
 
   let query = supabase
     .from("applications")
-    .select(`id, application_number, first_name, last_name, email, status, created_at, program, study_type, intakes ( id, title, academic_year, slug, study_level )`)
+    .select(`id, application_number, first_name, last_name, email, status, created_at, program, study_type, intake_id, intakes ( id, title, academic_year, slug, study_level )`)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
@@ -38,7 +38,8 @@ export default async function AdminHomePage({ searchParams }) {
   const { data: applications } = await query;
 
   const allApps = applications || [];
-  const visibleApps = permissions === "all" ? allApps : allApps.filter((app) => Array.isArray(permissions?.programs) && permissions.programs.includes(`${app.program}:${app.intakes?.study_level}`));
+  const allowedIntakeIds = permissions === "all" ? null : new Set((permissions.intakes || []).map((i) => i.id));
+  const visibleApps = permissions === "all" ? allApps : allApps.filter((app) => allowedIntakeIds.has(app.intake_id));
 
   // ─── Statistike po statusu ──────────────────────────────
   const statusCounts = {};

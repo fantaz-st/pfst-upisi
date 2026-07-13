@@ -13,7 +13,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { applicationStatuses, statusesWithMessage } from "@/lib/applications/config";
 import { updateApplicationStatus, updateApplication } from "@/lib/applications/actions";
-import { createEnrollmentToken, sendEnrollmentInvite } from "@/lib/enrollments/actions";
 
 export default function ApplicationStatusControl({ applicationId, currentStatus, currentJmbag, applicationEmail, applicationFirstName, applicationLastName, studyLevel, enrollmentIntakeId }) {
   const [loading, setLoading] = useState(null);
@@ -76,22 +75,10 @@ export default function ApplicationStatusControl({ applicationId, currentStatus,
       }
     }
 
-    // Ako je diplomska prijava — kreiraj enrollment token i pošalji mail
-    if (studyLevel === "diplomski" && enrollmentIntakeId) {
-      const tokenResult = await createEnrollmentToken(applicationId, enrollmentIntakeId);
-      if (tokenResult.success) {
-        try {
-          await sendEnrollmentInvite({
-            token: tokenResult.token,
-            email: applicationEmail,
-            firstName: applicationFirstName,
-            lastName: applicationLastName,
-          });
-        } catch (e) {
-          console.error("Email error:", e);
-        }
-      }
-    }
+    // NAPOMENA: magic link za upis se NE šalje ovdje.
+    // Prihvaćanje = obavijest kandidatu da čeka razredbeni postupak.
+    // Tek nakon razredbenog admin ručno generira i šalje link
+    // (gumb "Generiraj link za upis" na stranici prijave).
 
     await handleStatusChange("accepted");
   };

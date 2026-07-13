@@ -79,7 +79,12 @@ export default async function ApplicationDetailPage({ params }) {
         </Box>
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
           <Chip label={statusConfig.label} color={statusConfig.color} sx={{ fontWeight: 700 }} />
-          <ApplicationActions application={application} intakeSlug={application.intakes?.slug} intakeStudyLevel={application.intakes?.study_level} />
+          <ApplicationActions
+            application={application}
+            intakeSlug={application.intakes?.slug}
+            intakeStudyLevel={application.intakes?.study_level}
+            intakeFormType={application.intakes?.form_type}
+          />
         </Box>
       </Box>
 

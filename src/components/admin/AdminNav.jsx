@@ -187,15 +187,39 @@ export default function AdminNav() {
           </>
         )}
 
-        {/* Sve prijave */}
+        {/* Razdvojeno po razini — SVI admini (filtrirano po dozvolama) */}
         {(() => {
-          const active = isActive("/admin/sve-prijave");
+          const active = isActive("/admin/upisi-prijediplomski");
           return (
-            <ListItemButton component={Link} href="/admin/sve-prijave" sx={navItemSx(active)}>
+            <ListItemButton component={Link} href="/admin/upisi-prijediplomski" sx={navItemSx(active)}>
               <ListItemIcon sx={{ minWidth: 36 }}>
-                <ListIcon sx={iconSx(active)} />
+                <SchoolIcon sx={iconSx(active)} />
               </ListItemIcon>
-              <ListItemText primary="Sve prijave" slotProps={{ primary: { sx: textSx(active) } }} />
+              <ListItemText primary="Upisi na prijediplomski" slotProps={{ primary: { sx: textSx(active) } }} />
+              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
+            </ListItemButton>
+          );
+        })()}
+        {(() => {
+          const active = isActive("/admin/prijave-diplomski");
+          return (
+            <ListItemButton component={Link} href="/admin/prijave-diplomski" sx={navItemSx(active)}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <AssignmentIcon sx={iconSx(active)} />
+              </ListItemIcon>
+              <ListItemText primary="Prijave na diplomski" slotProps={{ primary: { sx: textSx(active) } }} />
+              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
+            </ListItemButton>
+          );
+        })()}
+        {(() => {
+          const active = isActive("/admin/upisi-diplomski");
+          return (
+            <ListItemButton component={Link} href="/admin/upisi-diplomski" sx={navItemSx(active)}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <SchoolIcon sx={iconSx(active)} />
+              </ListItemIcon>
+              <ListItemText primary="Upisi na diplomski" slotProps={{ primary: { sx: textSx(active) } }} />
               {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
             </ListItemButton>
           );
@@ -215,21 +239,9 @@ export default function AdminNav() {
           );
         })()}
 
-        {/* Super admin only */}
+{/* Super admin only */}
         {isSuperAdmin && (
           <>
-            {(() => {
-              const active = isActive("/admin/upisi-diplomski");
-              return (
-                <ListItemButton component={Link} href="/admin/upisi-diplomski" sx={navItemSx(active)}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <SchoolIcon sx={iconSx(active)} />
-                  </ListItemIcon>
-                  <ListItemText primary="Upisi (diplomski)" slotProps={{ primary: { sx: textSx(active) } }} />
-                  {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
-                </ListItemButton>
-              );
-            })()}
             {(() => {
               const active = isActive("/admin/korisnici");
               return (
@@ -242,6 +254,8 @@ export default function AdminNav() {
                 </ListItemButton>
               );
             })()}
+
+
             {(() => {
               const active = isActive("/admin/otpad");
               return (

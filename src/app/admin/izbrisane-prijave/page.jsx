@@ -43,7 +43,7 @@ export default async function DeletedApplicationsPage() {
   const appsWithAccess =
     applications?.map((app) => ({
       ...app,
-      canAccess: permissions === "all" || (Array.isArray(permissions?.programs) && permissions.programs.includes(`${app.program}:${app.intakes?.study_level}`)),
+      canAccess: permissions === "all" || (permissions.intakes || []).some((i) => i.id === app.intake_id),
     })) || [];
 
   return (

@@ -23,7 +23,7 @@ import Radio from "@mui/material/Radio";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import Checkbox from "@mui/material/Checkbox";
-import { studyPrograms, studyTypes, enrollmentTypeOptions, documentTypeLabels, applicationConfigs, enrollmentTypeRequiresTuition } from "@/lib/applications/config";
+import { studyPrograms, studyTypes, enrollmentTypeOptions, documentTypeLabels, applicationConfigs, enrollmentTypeRequiresTuition, getDiplomskiRequiredDocuments } from "@/lib/applications/config";
 import { updateApplication, uploadDocuments } from "@/lib/applications/actions";
 import PhotoUpload from "@/components/application/PhotoUpload";
 import DocumentUpload from "@/components/application/DocumentUpload";
@@ -36,8 +36,14 @@ const genderOptions = [
 
 const maritalOptions = ["Neoženjen / Neudana", "Oženjen / Udana", "Razveden/a", "Udovac / Udovica"];
 
-export default function EditApplicationModal({ open, onClose, application, intakeSlug, intakeStudyLevel }) {
+export default function EditApplicationModal({ open, onClose, application, intakeSlug, intakeStudyLevel, intakeFormType }) {
   const router = useRouter();
+  // Dvostupanjska prijava na diplomski (prijava_d) prikuplja samo osnovne
+  // podatke potrebne za prijavu. JMBAG, državljanstvo, mjesto rođenja, spol,
+  // bračno stanje, podaci o roditeljima (osim imena oca), plasman/izjava o upisu,
+  // podaci o srednjoj školi i drugom obrazovanju — sve to se prikuplja tek u
+  // upisu (enrollments), pa se ovdje ne prikazuje za taj form_type.
+  const showEnrollmentPersonalFields = intakeFormType !== "prijava_d";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [newPhoto, setNewPhoto] = useState(null);
@@ -84,11 +90,17 @@ export default function EditApplicationModal({ open, onClose, application, intak
   const needsTuitionPayment = formData.study_type === "izvanredni" || (formData.study_type === "redoviti" && enrollmentTypeRequiresTuition(formData.enrollment_type));
   const needsOccupationalMedicine = formData.program !== "pm";
 
-  const dynamicRequiredDocuments = [
-    ...config.requiredDocuments,
-    ...(needsTuitionPayment ? ["tuition_payment_confirmation"] : []),
-    ...(needsOccupationalMedicine ? ["occupational_medicine_certificate"] : []),
-  ];
+  // Obavezni dokumenti se razlikuju po form_type:
+  // - prijava_d (dvostupanjska prijava na diplomski): računaju se preko previous_study_institution
+  //   (ApplicationFormD koristi getDiplomskiRequiredDocuments)
+  // - upis_pd (izravni upis): dokumenti iz applicationConfigs + uvjetno školarina i medicina rada
+  const dynamicRequiredDocuments = intakeFormType === "prijava_d"
+    ? getDiplomskiRequiredDocuments(application.previous_study_institution)
+    : [
+        ...config.requiredDocuments,
+        ...(needsTuitionPayment ? ["tuition_payment_confirmation"] : []),
+        ...(needsOccupationalMedicine ? ["occupational_medicine_certificate"] : []),
+      ];
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -137,13 +149,15 @@ export default function EditApplicationModal({ open, onClose, application, intak
           Identifikacija
         </Typography>
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="JMBAG" value={formData.jmbag} onChange={(e) => handleChange("jmbag", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          {showEnrollmentPersonalFields && (
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField label="JMBAG" value={formData.jmbag} onChange={(e) => handleChange("jmbag", e.target.value)} fullWidth size="small" />
+            </Grid>
+          )}
+          <Grid size={{ xs: 12, sm: showEnrollmentPersonalFields ? 4 : 6 }}>
             <TextField label="Ime" value={formData.first_name} onChange={(e) => handleChange("first_name", e.target.value)} fullWidth size="small" />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: showEnrollmentPersonalFields ? 4 : 6 }}>
             <TextField label="Prezime" value={formData.last_name} onChange={(e) => handleChange("last_name", e.target.value)} fullWidth size="small" />
           </Grid>
         </Grid>
@@ -173,37 +187,43 @@ export default function EditApplicationModal({ open, onClose, application, intak
               slotProps={{ inputLabel: { shrink: true } }}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField label="Mjesto rođenja" value={formData.birth_place} onChange={(e) => handleChange("birth_place", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Spol</InputLabel>
-              <Select value={formData.gender} label="Spol" onChange={(e) => handleChange("gender", e.target.value)}>
-                {genderOptions.map((o) => (
-                  <MenuItem key={o.value} value={o.value}>
-                    {o.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Bračno stanje</InputLabel>
-              <Select value={formData.marital_status} label="Bračno stanje" onChange={(e) => handleChange("marital_status", e.target.value)}>
-                {maritalOptions.map((o) => (
-                  <MenuItem key={o} value={o}>
-                    {o}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="Državljanstvo" value={formData.citizenship} onChange={(e) => handleChange("citizenship", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 5 }}>
+          {showEnrollmentPersonalFields && (
+            <>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField label="Mjesto rođenja" value={formData.birth_place} onChange={(e) => handleChange("birth_place", e.target.value)} fullWidth size="small" />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Spol</InputLabel>
+                  <Select value={formData.gender} label="Spol" onChange={(e) => handleChange("gender", e.target.value)}>
+                    {genderOptions.map((o) => (
+                      <MenuItem key={o.value} value={o.value}>
+                        {o.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 3 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Bračno stanje</InputLabel>
+                  <Select value={formData.marital_status} label="Bračno stanje" onChange={(e) => handleChange("marital_status", e.target.value)}>
+                    {maritalOptions.map((o) => (
+                      <MenuItem key={o} value={o}>
+                        {o}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </>
+          )}
+          {showEnrollmentPersonalFields && (
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField label="Državljanstvo" value={formData.citizenship} onChange={(e) => handleChange("citizenship", e.target.value)} fullWidth size="small" />
+            </Grid>
+          )}
+          <Grid size={{ xs: 12, sm: showEnrollmentPersonalFields ? 5 : 9 }}>
             <TextField label="Adresa" value={formData.address} onChange={(e) => handleChange("address", e.target.value)} fullWidth size="small" />
           </Grid>
           <Grid size={{ xs: 12, sm: 3 }}>
@@ -224,29 +244,35 @@ export default function EditApplicationModal({ open, onClose, application, intak
               Otac
             </Typography>
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          {/* Ime oca se prikuplja i kod prijava_d, ostalo (zanimanje/adresa oca, svi podaci o majci)
+              tek kod upisa (enrollments), pa se ne prikazuju za taj form_type. */}
+          <Grid size={{ xs: 12, sm: showEnrollmentPersonalFields ? 4 : 12 }}>
             <TextField label="Ime oca" value={formData.father_name} onChange={(e) => handleChange("father_name", e.target.value)} fullWidth size="small" />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="Zanimanje oca" value={formData.father_occupation} onChange={(e) => handleChange("father_occupation", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="Adresa oca" value={formData.father_address} onChange={(e) => handleChange("father_address", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)" }}>
-              Majka
-            </Typography>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="Ime majke" value={formData.mother_name} onChange={(e) => handleChange("mother_name", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="Zanimanje majke" value={formData.mother_occupation} onChange={(e) => handleChange("mother_occupation", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField label="Adresa majke" value={formData.mother_address} onChange={(e) => handleChange("mother_address", e.target.value)} fullWidth size="small" />
-          </Grid>
+          {showEnrollmentPersonalFields && (
+            <>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField label="Zanimanje oca" value={formData.father_occupation} onChange={(e) => handleChange("father_occupation", e.target.value)} fullWidth size="small" />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField label="Adresa oca" value={formData.father_address} onChange={(e) => handleChange("father_address", e.target.value)} fullWidth size="small" />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)" }}>
+                  Majka
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField label="Ime majke" value={formData.mother_name} onChange={(e) => handleChange("mother_name", e.target.value)} fullWidth size="small" />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField label="Zanimanje majke" value={formData.mother_occupation} onChange={(e) => handleChange("mother_occupation", e.target.value)} fullWidth size="small" />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField label="Adresa majke" value={formData.mother_address} onChange={(e) => handleChange("mother_address", e.target.value)} fullWidth size="small" />
+              </Grid>
+            </>
+          )}
         </Grid>
 
         {/* Studij */}
@@ -278,11 +304,13 @@ export default function EditApplicationModal({ open, onClose, application, intak
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField label="Plasman na rang listi" value={formData.ranking_score} onChange={(e) => handleChange("ranking_score", e.target.value)} fullWidth size="small" />
-          </Grid>
+          {showEnrollmentPersonalFields && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Plasman na rang listi" value={formData.ranking_score} onChange={(e) => handleChange("ranking_score", e.target.value)} fullWidth size="small" />
+            </Grid>
+          )}
 
-          {formData.study_type === "redoviti" && (
+          {showEnrollmentPersonalFields && formData.study_type === "redoviti" && (
             <Grid size={{ xs: 12 }}>
               <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--gray-600)", display: "block", mb: 0.5 }}>
                 Izjava o upisu
@@ -311,19 +339,23 @@ export default function EditApplicationModal({ open, onClose, application, intak
           Prethodno obrazovanje
         </Typography>
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid size={{ xs: 12 }}>
-            <TextField
-              label="Završena srednja škola"
-              value={formData.previous_institution}
-              onChange={(e) => handleChange("previous_institution", e.target.value)}
-              fullWidth
-              size="small"
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 8 }}>
-            <TextField label="Program / smjer" value={formData.previous_program} onChange={(e) => handleChange("previous_program", e.target.value)} fullWidth size="small" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          {showEnrollmentPersonalFields && (
+            <>
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  label="Završena srednja škola"
+                  value={formData.previous_institution}
+                  onChange={(e) => handleChange("previous_institution", e.target.value)}
+                  fullWidth
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 8 }}>
+                <TextField label="Program / smjer" value={formData.previous_program} onChange={(e) => handleChange("previous_program", e.target.value)} fullWidth size="small" />
+              </Grid>
+            </>
+          )}
+          <Grid size={{ xs: 12, sm: showEnrollmentPersonalFields ? 4 : 12 }}>
             <TextField
               label="Godina završetka"
               value={formData.previous_completion_year}
@@ -332,17 +364,19 @@ export default function EditApplicationModal({ open, onClose, application, intak
               size="small"
             />
           </Grid>
-          <Grid size={{ xs: 12 }}>
-            <TextField
-              label="Drugi fakultet / viša škola"
-              value={formData.other_education}
-              onChange={(e) => handleChange("other_education", e.target.value)}
-              fullWidth
-              size="small"
-              multiline
-              rows={2}
-            />
-          </Grid>
+          {showEnrollmentPersonalFields && (
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                label="Drugi fakultet / viša škola"
+                value={formData.other_education}
+                onChange={(e) => handleChange("other_education", e.target.value)}
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+              />
+            </Grid>
+          )}
         </Grid>
 
         {/* Fotografija */}

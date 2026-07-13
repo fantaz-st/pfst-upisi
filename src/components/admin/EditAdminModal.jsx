@@ -12,56 +12,33 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
-import Checkbox from "@mui/material/Checkbox";
-import FormGroup from "@mui/material/FormGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Box from "@mui/material/Box";
-import { studyPrograms } from "@/lib/applications/config";
 import { updateAdmin } from "@/lib/admin/actions";
 import { createClient } from "@/lib/supabase/client";
 
-export default function EditAdminModal({ open, onClose, admin }) {
+export default function EditAdminModal({ open, onClose, admin, loadingPerms }) {
   const router = useRouter();
   const [role, setRole] = useState("admin");
-  const [programs, setPrograms] = useState([]);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingPerms, setLoadingPerms] = useState(false);
   const [error, setError] = useState(null);
-
-  const programGroups = [
-    { level: "prijediplomski", label: "Prijediplomski (PD)", items: studyPrograms.prijediplomski },
-    { level: "diplomski", label: "Diplomski (D)", items: studyPrograms.diplomski },
-  ];
 
   useEffect(() => {
     if (!open || !admin) return;
     setRole(admin.role);
     setPassword("");
     setError(null);
-
-    async function loadPermissions() {
-      setLoadingPerms(true);
-      const supabase = createClient();
-      const { data } = await supabase.from("admin_program_permissions").select("program").eq("user_id", admin.user_id);
-      setPrograms(data?.map((p) => p.program) || []);
-      setLoadingPerms(false);
-    }
-    loadPermissions();
+    setLoading(false);
   }, [open, admin]);
-
-  const handleProgramToggle = (value) => {
-    setPrograms((prev) => (prev.includes(value) ? prev.filter((p) => p !== value) : [...prev, value]));
-  };
 
   const handleSave = async () => {
     setLoading(true);
     setError(null);
-    const result = await updateAdmin({ userId: admin.user_id, role, programs, password: password || null });
+    const result = await updateAdmin({ userId: admin.user_id, role, password: password || null });
     if (result.error) {
       setError(result.error);
       setLoading(false);
@@ -115,26 +92,9 @@ export default function EditAdminModal({ open, onClose, admin }) {
             {role === "admin" && (
               <>
                 <Divider sx={{ mb: 2 }} />
-                <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)", mb: 1 }}>
-                  Dozvoljeni studiji:
+                <Typography variant="body2" sx={{ color: "var(--gray-500)", fontSize: "0.82rem" }}>
+                  Pristup prijavama dodjeljuje se po upisnom roku u sekciji <strong>Upravljanje upisima</strong>.
                 </Typography>
-                {programGroups.map((group) => (
-                  <FormGroup key={group.level} sx={{ mb: 1.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--gray-500)", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
-                      {group.label}
-                    </Typography>
-                    {group.items.map((prog) => {
-                      const key = `${prog.value}:${group.level}`;
-                      return (
-                        <FormControlLabel
-                          key={key}
-                          control={<Checkbox size="small" checked={programs.includes(key)} onChange={() => handleProgramToggle(key)} />}
-                          label={<Typography variant="body2">{prog.label}</Typography>}
-                        />
-                      );
-                    })}
-                  </FormGroup>
-                ))}
               </>
             )}
           </>

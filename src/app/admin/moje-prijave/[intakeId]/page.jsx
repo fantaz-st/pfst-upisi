@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { getAdminPermissions, canAccessIntake } from "@/lib/admin/permissions";
+import { canAccessIntake } from "@/lib/admin/permissions";
 import { notFound, redirect } from "next/navigation";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import ApplicationsTable from "@/components/admin/ApplicationsTable";
+import IntakeTabs from "@/components/admin/IntakeTabs";
 import styles from "../../admin.module.css";
 
 export const metadata = { title: "Moje prijave — Admin" };
@@ -24,23 +25,32 @@ export default async function MyIntakePage({ params }) {
 
   if (!intake) notFound();
 
-  const permissions = await getAdminPermissions();
-  // Ključevi su "program:study_level" — filtriraj po razini ovog intakea
-  const allowedPrograms =
-    permissions === "all"
-      ? null
-      : permissions.programs.filter((key) => key.endsWith(`:${intake.study_level}`)).map((key) => key.split(":")[0]);
-
-  let query = supabase
+  // Pristup je već provjeren s canAccessIntake — admin vidi sve prijave ovog intakea
+  const { data: applications } = await supabase
     .from("applications")
-    .select(`id, application_number, first_name, last_name, email, oib, status, created_at, program, study_type, intakes ( title, academic_year )`)
+    .select(`id, application_number, first_name, last_name, email, oib, status, created_at, program, study_type, intakes ( title, academic_year, study_level )`)
     .eq("intake_id", intakeId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
-  if (allowedPrograms) query = query.in("program", allowedPrograms);
+  // Za prijava_d intakee — dohvati i enrollmente (upise) vezane uz aplikacije ovog intakea
+  let enrollments = [];
+  if (intake.form_type === "prijava_d") {
+    const appIds = (applications ?? []).map((a) => a.id);
+    if (appIds.length > 0) {
+      const { data: enr } = await supabase
+        .from("enrollments")
+        .select(`
+          id, status, submitted_at, created_at, token_expires_at, token_used_at,
+          applications ( id, first_name, last_name, oib, email, program, study_type )
+        `)
+        .in("application_id", appIds)
+        .order("created_at", { ascending: false });
+      enrollments = enr ?? [];
+    }
+  }
 
-  const { data: applications } = await query;
+  const isPrijavaD = intake.form_type === "prijava_d";
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -51,11 +61,18 @@ export default async function MyIntakePage({ params }) {
             <Chip label={intake.academic_year} size="small" sx={{ fontWeight: 600, background: "var(--blue-pale)", color: "var(--blue-dark)" }} />
             {intake.is_open && <Chip label="Otvoreno" size="small" color="success" sx={{ fontWeight: 600 }} />}
           </Box>
-          <div className={styles.pageSubtitle}>{applications?.length ?? 0} ukupno prijava</div>
+          <div className={styles.pageSubtitle}>
+            {applications?.length ?? 0} ukupno prijava
+            {isPrijavaD && ` · ${enrollments.length} upisa`}
+          </div>
         </div>
       </div>
 
-      <ApplicationsTable applications={applications ?? []} mode="active" intake={intake} />
+      {isPrijavaD ? (
+        <IntakeTabs applications={applications ?? []} enrollments={enrollments} intake={intake} />
+      ) : (
+        <ApplicationsTable applications={applications ?? []} mode="active" intake={intake} />
+      )}
     </Container>
   );
 }

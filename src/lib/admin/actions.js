@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
-export async function createAdmin({ email, password, role, programs }) {
+export async function createAdmin({ email, password, role }) {
   const adminClient = createAdminClient();
 
   const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
@@ -19,22 +19,11 @@ export async function createAdmin({ email, password, role, programs }) {
   const { error: roleError } = await supabase.from("admin_roles").insert({ user_id: userId, role, email });
   if (roleError) return { error: "Greška pri dodjeljivanju role: " + roleError.message };
 
-  if (role === "admin" && programs.length > 0) {
-    const uniqueKeys = [...new Set(programs)];
-    const { error: permError } = await supabase.from("admin_program_permissions").insert(
-      uniqueKeys.map((key) => {
-        const [program, study_level] = key.split(":");
-        return { user_id: userId, program, study_level: study_level || "prijediplomski" };
-      }),
-    );
-    if (permError) return { error: "Greška pri dodjeljivanju dozvola: " + permError.message };
-  }
-
   revalidatePath("/admin/korisnici");
   return { success: true };
 }
 
-export async function updateAdmin({ userId, role, programs, password }) {
+export async function updateAdmin({ userId, role, password }) {
   const supabase = await createClient();
 
   // Promjena lozinke ako je unesena
@@ -46,19 +35,6 @@ export async function updateAdmin({ userId, role, programs, password }) {
 
   const { error: roleError } = await supabase.from("admin_roles").update({ role }).eq("user_id", userId);
   if (roleError) return { error: "Greška pri ažuriranju role: " + roleError.message };
-
-  await supabase.from("admin_program_permissions").delete().eq("user_id", userId);
-
-  if (role === "admin" && programs.length > 0) {
-    const uniqueKeys = [...new Set(programs)];
-    const { error: permError } = await supabase.from("admin_program_permissions").insert(
-      uniqueKeys.map((key) => {
-        const [program, study_level] = key.split(":");
-        return { user_id: userId, program, study_level: study_level || "prijediplomski" };
-      }),
-    );
-    if (permError) return { error: "Greška pri ažuriranju dozvola: " + permError.message };
-  }
 
   revalidatePath("/admin/korisnici");
   return { success: true };

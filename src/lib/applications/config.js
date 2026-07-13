@@ -4,7 +4,11 @@ export const documentTypeLabels = {
   citizenship_certificate: "Domovnica",
   previous_education_certificate: "Svjedodžba / diploma prethodnog obrazovanja",
   grade_transcript: "Prijepis ocjena",
-  payment_confirmation: "Potvrda o uplati",
+  payment_confirmation: "Uplatnica upisnine",
+  tuition_payment_confirmation: "Uplatnica školarine",
+  occupational_medicine_certificate: "Potvrda medicine rada",
+  combined_documents: "Svi dokumenti (jedna datoteka)",
+  photo: "Fotografija pristupnika",
   other: "Ostalo",
 };
 
@@ -12,13 +16,12 @@ export const applicationConfigs = {
   prijediplomski: {
     title: "Prijava za prijediplomski studij",
     requiredDocuments: [
+      "birth_certificate",
       "identity_card",
-      // Ostali dokumenti komentirani za testiranje
-      // "birth_certificate",
-      // "citizenship_certificate",
-      // "previous_education_certificate",
-      // "grade_transcript",
-      // "payment_confirmation",
+      "payment_confirmation",
+      // tuition_payment_confirmation dodaje se uvjetno (izvanredni ili
+      // redoviti s enrollment_type 2/3/4)
+      // occupational_medicine_certificate dodaje se uvjetno (svi programi osim pm)
     ],
   },
   diplomski: {

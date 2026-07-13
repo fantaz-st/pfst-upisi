@@ -146,7 +146,20 @@ export function emailPotrebneIzmjene({ ime, prezime, brojPrijave, poruka, magicL
   };
 }
 
-export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGodina }) {
+export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGodina, studyLevel }) {
+  const isDiplomski = studyLevel === "diplomski";
+  const infoBlock = isDiplomski
+    ? `
+              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
+                Vaša prijava sada ulazi u <strong>razredbeni postupak</strong>. Nakon objave rang-liste obavijestit ćemo Vas o daljnjim koracima. Ako ostvarite pravo na upis, zaprimit ćete zaseban e-mail s poveznicom za online upis.
+              </p>
+              <p style="margin:0;font-size:15px;color:#555;line-height:1.6;">
+                Za dodatne informacije obratite se referadi na
+                <a href="mailto:referada.diplomski@pfst.hr" style="color:#1B6CA8;">referada.diplomski@pfst.hr</a>.
+              </p>`
+    : `
+              ${infoBlock}`;
+
   return {
     subject: `Prijava prihvaćena — ${brojPrijave}`,
     html: `
@@ -180,14 +193,7 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
               <p style="margin:0 0 8px;font-size:15px;color:#555;line-height:1.6;">
                 Broj prijave: <strong style="font-family:monospace;">${brojPrijave}</strong>
               </p>
-              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
-                Za daljnje informacije o upisu obratite se referadi fakulteta.
-              </p>
-              <p style="margin:0;font-size:15px;color:#555;line-height:1.6;">
-                Ukoliko Vam treba potvrda o upisu možete je zatražiti na mail
-                <a href="mailto:referada.prijediplomski@pfst.hr" style="color:#1B6CA8;">referada.prijediplomski@pfst.hr</a>.
-                Naznačite svrhu potvrde.
-              </p>
+              ${infoBlock}
             </td>
           </tr>
 

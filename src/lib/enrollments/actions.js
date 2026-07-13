@@ -193,3 +193,23 @@ export async function sendEnrollmentInvite({ token, email, firstName, lastName }
     `,
   });
 }
+
+export async function bulkConfirmEnrollments(enrollmentIds) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("enrollments")
+    .update({ status: "confirmed" })
+    .in("id", enrollmentIds)
+    .eq("status", "submitted"); // samo submitane možemo potvrditi
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  return { success: true, count: enrollmentIds.length };
+}
+
+export async function deleteEnrollment(enrollmentId) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  return { success: true };
+}

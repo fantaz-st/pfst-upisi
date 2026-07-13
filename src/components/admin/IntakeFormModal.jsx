@@ -120,13 +120,7 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
       setLoadingAdmins(true);
       const supabase = createClient();
       const { data: adminRoles } = await supabase.from("admin_roles").select("user_id, email, role").eq("role", "admin").order("email");
-      const adminsWithPrograms = await Promise.all(
-        (adminRoles || []).map(async (admin) => {
-          const { data: perms } = await supabase.from("admin_program_permissions").select("program, study_level").eq("user_id", admin.user_id);
-          return { ...admin, programs: perms?.map((p) => `${p.program.toUpperCase()} (${p.study_level === "diplomski" ? "D" : "PD"})`) || [] };
-        }),
-      );
-      setAdmins(adminsWithPrograms);
+      setAdmins(adminRoles || []);
       if (isEdit) {
         const { data: intakeAdmins } = await supabase.from("intake_admins").select("user_id").eq("intake_id", intake.id);
         setSelectedAdmins(intakeAdmins?.map((a) => a.user_id) || []);
@@ -446,11 +440,6 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {admin.email}
                     </Typography>
-                    {admin.programs.length > 0 && (
-                      <Typography variant="caption" color="text.secondary">
-                        ({admin.programs.join(", ")})
-                      </Typography>
-                    )}
                   </Box>
                 }
               />
