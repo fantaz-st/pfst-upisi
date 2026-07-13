@@ -28,6 +28,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import SchoolIcon from "@mui/icons-material/School";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
+import GavelIcon from "@mui/icons-material/Gavel";
 import { fullApplicationSchema } from "@/lib/applications/validation";
 import { submitApplication, requestEditLinkForExisting } from "@/lib/applications/actions";
 import DocumentUpload from "./DocumentUpload";
@@ -638,8 +639,30 @@ export default function ApplicationForm({ intake }) {
         </Stack>
       </Paper>
 
-      {/* Suglasnost */}
+      {/* Privola */}
       <Paper variant="outlined" className={styles.sectionPaper}>
+        <SectionHeader icon={<GavelIcon sx={{ fontSize: 18 }} />} title="Privola" />
+
+        <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 2 }}>
+          Na temelju točke 32. Opće uredbe o zaštiti podataka, EC 2016/679 i odredbi Zakona o provedbi Opće uredbe o zaštiti osobnih podataka
+          („Narodne novine“ broj 42/18), svojim potpisom dajem <strong>PRIVOLU</strong> Pomorskom fakultetu u Splitu, da u svrhu ostvarivanja
+          mojih prava iz studentskog standarda i službene komunikacije tijekom studiranja koristi moje osobne podatke.
+        </Typography>
+
+        <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5, mt: 2 }}>
+          Napomena:
+        </Typography>
+        <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 2 }}>
+          Navedeni osobni podaci koristit će se isključivo u gore navedenu svrhu u skladu sa odredbama Opće uredbe o zaštiti podataka
+          EC 2016/679, te se u druge svrhe ne smije koristiti bez pisane privole osobe na koju se osobni podaci odnose. Daljnja obrada
+          osobnih podataka u povijesne, statističke ili znanstvene svrhe neće se smatrati nepodudarnom, pod uvjetom da se poduzmu
+          odgovarajuće zaštitne mjere.
+        </Typography>
+        <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 2 }}>
+          Student ima pravo u svako doba odustati od dane privole i zatražiti prestanak daljnje obrade, na način da ispuni za to propisani
+          obrazac, te ga dostavi voditelju obrade osobnih podataka.
+        </Typography>
+
         <Controller
           name="consent"
           control={control}
@@ -649,8 +672,7 @@ export default function ApplicationForm({ intake }) {
                 control={<Checkbox {...field} checked={field.value} color="primary" />}
                 label={
                   <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
-                    Potvrđujem da su svi uneseni podaci točni i da su priloženi dokumenti autentični. Suglasan/na sam s obradom osobnih podataka u svrhu upisa na Pomorski fakultet
-                    Split, sukladno Uredbi (EU) 2016/679 (GDPR).
+                    Prihvaćam privolu Pomorskog fakulteta Sveučilišta u Splitu
                   </Typography>
                 }
               />

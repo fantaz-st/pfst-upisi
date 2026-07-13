@@ -29,6 +29,7 @@ export const personalInfoSchema = z.object({
   study_type: z.enum(["redoviti", "izvanredni"], {
     errorMap: () => ({ message: "Odaberite vrstu studiranja" }),
   }),
+  enrollment_type: z.number().int().min(1).max(4).nullish(),
 });
 
 export const educationSchema = z.object({
