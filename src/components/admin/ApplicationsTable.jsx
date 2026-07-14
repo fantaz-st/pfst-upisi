@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -57,6 +57,7 @@ export default function ApplicationsTable({
   intake = null, // cijeli intake objekt za kontekst
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [programFilter, setProgramFilter] = useState("");
@@ -520,7 +521,7 @@ export default function ApplicationsTable({
                           </Box>
                         ) : canAccess ? (
                           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                            <Button href={`${linkPrefix}/${app.id}`} size="small" variant="outlined" sx={{ borderRadius: "100px", fontSize: "0.75rem" }}>
+                            <Button href={`${linkPrefix}/${app.id}?from=${encodeURIComponent(pathname)}`} size="small" variant="outlined" sx={{ borderRadius: "100px", fontSize: "0.75rem" }}>
                               Pregled
                             </Button>
                             <Button
@@ -687,7 +688,7 @@ export default function ApplicationsTable({
           </FormControl>
 
           <Alert severity="info" sx={{ mb: 2 }}>
-            Status "Prihvaćeno" nije dostupan za bulk promjenu jer zahtijeva unos JMBAG-a po prijavi. Koristite pojedinačni pregled prijave.
+            Status "Upisan" nije dostupan za bulk promjenu jer zahtijeva unos JMBAG-a po prijavi. Koristite pojedinačni pregled prijave.
           </Alert>
 
           {statusesWithMessage.includes(bulkStatus) && (

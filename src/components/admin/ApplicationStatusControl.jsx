@@ -165,7 +165,7 @@ export default function ApplicationStatusControl({ applicationId, currentStatus,
             onClick={handleAcceptWithJmbag}
             startIcon={loading ? <CircularProgress size={16} /> : null}
           >
-            Prihvati prijavu
+            Potvrdi upis
           </Button>
         </DialogActions>
       </Dialog>

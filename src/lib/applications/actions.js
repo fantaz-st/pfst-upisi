@@ -4,11 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { generateApplicationNumber } from "./applicationNumber";
 import { fullApplicationSchema, personalInfoSchema } from "./validation";
 import { sendEmail } from "@/lib/email/send";
-import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno } from "@/lib/email/templates";
-import { getProgramLabel } from "@/lib/applications/config";
+import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno, emailUObradi } from "@/lib/email/templates";
+import { getProgramLabel, applicationStatuses, isCandidateLocked } from "@/lib/applications/config";
 import { revalidatePath } from "next/cache";
 
-export async function submitApplication(formData, slug) {
+export async function submitApplication(formData, slug, force = false) {
   const supabase = await createClient();
 
   const { data: intake, error: intakeError } = await supabase
@@ -58,6 +58,74 @@ export async function submitApplication(formData, slug) {
 
   // Prazan string ("") pretvori u null da ne puknu CHECK/nullability constraint-i
   const nz = (v) => (v === "" || v === undefined ? null : v);
+
+  // Provjera prava upisa preko liste kvalificiranih kandidata (razredbeni postupak).
+  // Semantika: ako intake ima IKAKVU listu, provjera je aktivna i OIB mora biti na
+  // konkretnoj listi za (program, study_type). Ako intake nema ni jedan red u
+  // intake_eligible_candidates, feature je isključen za taj intake i sve prijave prolaze.
+  const { data: eligibleRows } = await supabase
+    .from("intake_eligible_candidates")
+    .select("program, study_type")
+    .eq("intake_id", intake.id)
+    .eq("oib", oib);
+
+  const { count: totalListCount } = await supabase
+    .from("intake_eligible_candidates")
+    .select("*", { count: "exact", head: true })
+    .eq("intake_id", intake.id);
+
+  if (totalListCount && totalListCount > 0) {
+    const matches = (eligibleRows || []).some((r) => r.program === program && r.study_type === study_type);
+    if (!matches) {
+      const otherEnrollments = eligibleRows || [];
+      if (otherEnrollments.length > 0) {
+        // OIB je registriran za neki drugi program/vrstu — pomogni korisniku porukom
+        const other = otherEnrollments
+          .map((r) => `${getProgramLabel(r.program)} (${r.study_type})`)
+          .join(", ");
+        return {
+          error:
+            `Vaš OIB nije na listi za odabrani studij i vrstu studiranja. ` +
+            `Prema podacima referade, imate pravo upisa na: ${other}. ` +
+            `Odaberite odgovarajući studij ili se javite referadi.`,
+        };
+      }
+      return {
+        error:
+          "Vaš OIB nije na listi kvalificiranih kandidata za ovaj upis. " +
+          "Ako smatrate da je došlo do greške, javite se referadi.",
+      };
+    }
+  }
+
+  // Provjera duplikata: isti OIB + intake + program.
+  // Isti OIB smije podnijeti prijave za više različitih studija u istom intakeu
+  // (ako je na listi za svaki), ali ne dvije za isti studij.
+  // Ako je force=true, preskačemo provjeru (koristi se za "Pošalji svejedno").
+  const { data: existing } = force
+    ? { data: null }
+    : await supabase
+        .from("applications")
+        .select("id, status, application_number, program")
+        .eq("intake_id", intake.id)
+        .eq("program", program)
+        .eq("oib", oib)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+  if (existing) {
+    return {
+      duplicate: true,
+      duplicateType: "same_program",
+      canEdit: !isCandidateLocked(existing.status),
+      existingApplication: {
+        id: existing.id,
+        application_number: existing.application_number,
+        program: existing.program,
+        status: existing.status,
+      },
+    };
+  }
 
   const application_number = generateApplicationNumber();
 
@@ -191,6 +259,7 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
   const programLabel = getProgramLabel(application.program);
   const akademskaGodina = application.intakes?.academic_year;
 
+  let emailWarning = null;
   try {
     if (newStatus === "needs_update" && adminMessage) {
       const expiresAt = new Date();
@@ -226,6 +295,15 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
         studyLevel: application.intakes?.study_level,
       });
       await sendEmail({ to: application.email, ...template });
+    } else if (newStatus === "in_review") {
+      const template = emailUObradi({
+        ime: application.first_name,
+        prezime: application.last_name,
+        brojPrijave: application.application_number,
+        studij: programLabel,
+        akademskaGodina,
+      });
+      await sendEmail({ to: application.email, ...template });
     } else if (newStatus === "rejected") {
       const template = emailOdbijeno({
         ime: application.first_name,
@@ -238,10 +316,13 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
     }
   } catch (emailError) {
     console.error("Email error:", emailError);
+    // Status je već ažuriran u DB-u, ali email nije otišao — vratimo warning
+    // da admin zna, ne samo tihi console log.
+    emailWarning = `Status je spremljen, ali email nije poslan: ${emailError.message}`;
   }
 
   revalidatePath(`/admin/prijave/${applicationId}`);
-  return { success: true };
+  return emailWarning ? { success: true, emailWarning } : { success: true };
 }
 
 export async function updateApplicationViaToken(token, data) {
@@ -259,6 +340,12 @@ export async function updateApplicationViaToken(token, data) {
   if (isExpired) return { error: "Link je istekao." };
 
   const application = tokenData.applications;
+
+  // Ako je referada u međuvremenu preuzela obradu, ne dopuštamo izmjene
+  // ni s valjanim tokenom.
+  if (isCandidateLocked(application.status)) {
+    return { error: "Prijava je u obradi kod referade i više se ne može uređivati." };
+  }
 
   const parsed = personalInfoSchema.safeParse(data);
   if (!parsed.success) {
@@ -349,7 +436,7 @@ export async function checkApplicationStatus(applicationNumber, oib) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("applications")
-    .select("application_number, status, program, study_type, created_at")
+    .select("application_number, status, program, study_type, created_at, intakes ( study_level )")
     .eq("application_number", applicationNumber)
     .eq("oib", oib)
     .is("deleted_at", null)
@@ -357,7 +444,7 @@ export async function checkApplicationStatus(applicationNumber, oib) {
   if (error || !data) {
     return { error: "Prijava nije pronađena. Provjerite broj prijave i OIB." };
   }
-  return data;
+  return { ...data, study_level: data.intakes?.study_level };
 }
 
 export async function submitApplicationD(formData, slug, filesToUpload = []) {
@@ -462,43 +549,6 @@ export async function submitApplicationD(formData, slug, filesToUpload = []) {
   return { success: true, applicationNumber: application_number };
 }
 
-export async function requestEditLinkForExisting(applicationId) {
-  const supabase = await createClient();
-  const { data: application, error } = await supabase
-    .from("applications")
-    .select("id, email, first_name, last_name, application_number, intakes ( title, academic_year )")
-    .eq("id", applicationId)
-    .single();
-  if (error || !application) return { error: "Prijava nije pronađena." };
-
-  const token = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const { error: tokenError } = await supabase.from("edit_tokens").insert({
-    application_id: applicationId,
-    token,
-    expires_at: expiresAt,
-  });
-  if (tokenError) return { error: tokenError.message };
-
-  const magicLink = `${process.env.NEXT_PUBLIC_SITE_URL}/prijava/uredi/${token}`;
-
-  try {
-    const emailContent = emailPotrebneIzmjene({
-      ime: application.first_name,
-      prezime: application.last_name,
-      brojPrijave: application.application_number,
-      poruka: "Molimo provjerite i ispravite podatke u prijavi.",
-      magicLink,
-    });
-    await sendEmail({ to: application.email, ...emailContent });
-  } catch (e) {
-    console.error("Email error:", e);
-  }
-
-  return { success: true };
-}
-
 export async function bulkUpdateApplicationStatus(applicationIds, newStatus, adminMessage = null) {
   const results = { success: 0, failed: 0, errors: [] };
   for (const id of applicationIds) {
@@ -543,4 +593,81 @@ export async function uploadDocumentsViaToken(token, files) {
   }
 
   return uploadDocuments(applicationId, files);
+}
+
+/**
+ * Traženje edit linka za već postojeću prijavu (self-service).
+ * Poziva se kad pristupnik pri submitu naiđe na duplikat i klikne
+ * "Pošalji mi link za uređivanje".
+ *
+ * Sigurnost:
+ * - Email link uvijek ide na adresu iz postojeće prijave, nikad na email
+ *   koji je pristupnik utipkao u formu (inače bi netko mogao "oteti" tuđu
+ *   prijavu utipkavši tuđi applicationId).
+ * - Reuse-a postojeći nekorišten, neistekli token ako postoji.
+ * - Ne otkrivamo email adresu u response-u (vraća generic success).
+ */
+export async function requestEditLinkForExisting(applicationId) {
+  const supabase = await createClient();
+
+  const { data: application } = await supabase
+    .from("applications")
+    .select("id, status, email, first_name, last_name, application_number")
+    .eq("id", applicationId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!application) return { error: "Prijava nije pronađena." };
+  if (isCandidateLocked(application.status)) {
+    return { error: "Prijava je već u obradi i ne može se više uređivati. Kontaktirajte referadu." };
+  }
+
+  // Reuse nekorišten neistekli token ako postoji
+  const now = new Date().toISOString();
+  const { data: reusable } = await supabase
+    .from("application_edit_tokens")
+    .select("token, expires_at")
+    .eq("application_id", application.id)
+    .is("used_at", null)
+    .gt("expires_at", now)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let token = reusable?.token;
+  if (!token) {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    const { data: fresh, error: tokenError } = await supabase
+      .from("application_edit_tokens")
+      .insert({
+        application_id: application.id,
+        message: "Traženje linka za uređivanje prijave (duplikat pri ponovnoj prijavi).",
+        expires_at: expiresAt.toISOString(),
+      })
+      .select("token")
+      .single();
+    if (tokenError) return { error: "Greška pri kreiranju linka. Pokušajte ponovo." };
+    token = fresh.token;
+  }
+
+  const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/prijava/uredi/${token}`;
+  const template = emailPotrebneIzmjene({
+    ime: application.first_name,
+    prezime: application.last_name,
+    brojPrijave: application.application_number,
+    poruka:
+      "Zatražili ste link za uređivanje već poslane prijave. Kliknite gumb ispod za nastavak. " +
+      "Ako niste vi tražili ovaj link, slobodno zanemarite ovaj email.",
+    magicLink,
+  });
+
+  try {
+    await sendEmail({ to: application.email, ...template });
+  } catch (emailError) {
+    console.error("Email error (edit link request):", emailError);
+    return { error: "Greška pri slanju emaila. Pokušajte ponovo." };
+  }
+
+  return { success: true };
 }

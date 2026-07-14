@@ -12,7 +12,7 @@ export default async function AdminPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/admin/moje-prijave");
+  if (user) redirect("/admin/pocetna");
 
   return (
     <Box

@@ -30,7 +30,7 @@ export default function AdminLoginForm() {
       return;
     }
 
-    router.push("/admin/moje-prijave");
+    router.push("/admin/pocetna");
     router.refresh();
   };
 

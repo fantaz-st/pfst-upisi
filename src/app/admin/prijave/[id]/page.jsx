@@ -18,8 +18,9 @@ import ApplicantPhoto from "@/components/admin/ApplicantPhoto";
 import { canAccessApplication } from "@/lib/admin/permissions";
 import styles from "../../admin.module.css";
 
-export default async function ApplicationDetailPage({ params }) {
+export default async function ApplicationDetailPage({ params, searchParams }) {
   const { id } = await params;
+  const sp = (await searchParams) || {};
   const supabase = await createClient();
 
   const { data: application, error } = await supabase
@@ -30,8 +31,14 @@ export default async function ApplicationDetailPage({ params }) {
 
   if (error || !application) notFound();
 
+  // Kanonski povratni URL — koristi ?from= ako je zadan, inače deriviraj iz
+  // intake.form_type (per-intake pogled je najprirodniji fallback).
+  const canonicalBack =
+    application.intakes?.id ? `/admin/intake/${application.intakes.id}` : "/admin/pocetna";
+  const backHref = typeof sp.from === "string" && sp.from.startsWith("/admin/") ? sp.from : canonicalBack;
+
   const hasAccess = await canAccessApplication(application.program, application.intake_id, application.intakes?.study_level);
-  if (!hasAccess) redirect("/admin/moje-prijave");
+  if (!hasAccess) redirect(backHref);
 
   const {
     data: { user },
@@ -62,7 +69,7 @@ export default async function ApplicationDetailPage({ params }) {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Button href="/admin/moje-prijave" startIcon={<ArrowBackIcon />} sx={{ mb: 3, borderRadius: "100px" }} size="small">
+      <Button href={backHref} startIcon={<ArrowBackIcon />} sx={{ mb: 3, borderRadius: "100px" }} size="small">
         Nazad
       </Button>
 
@@ -84,6 +91,7 @@ export default async function ApplicationDetailPage({ params }) {
             intakeSlug={application.intakes?.slug}
             intakeStudyLevel={application.intakes?.study_level}
             intakeFormType={application.intakes?.form_type}
+            backHref={backHref}
           />
         </Box>
       </Box>

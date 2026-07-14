@@ -119,7 +119,11 @@ export default function StatusCheckForm() {
           {result.status === "accepted" && (
             <div className={`${styles.alert} ${styles.alertSuccess}`}>
               <CheckCircleIcon sx={{ fontSize: 18, flexShrink: 0 }} />
-              <span>Čestitamo! Vaša prijava je prihvaćena. Za daljnje informacije obratite se referadi.</span>
+              <span>
+                {result.study_level === "diplomski"
+                  ? "Čestitamo! Vaša prijava je prihvaćena i ulazi u razredbeni postupak. Za daljnje informacije obratite se referadi."
+                  : "Čestitamo! Uspješno ste upisani. Za daljnje informacije obratite se referadi."}
+              </span>
             </div>
           )}
           {result.status === "rejected" && (

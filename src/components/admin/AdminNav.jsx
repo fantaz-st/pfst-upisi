@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useState, useEffect, useMemo } from "react";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -14,11 +14,11 @@ import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import ListIcon from "@mui/icons-material/List";
 import SchoolIcon from "@mui/icons-material/School";
 import PeopleIcon from "@mui/icons-material/People";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LogoutIcon from "@mui/icons-material/Logout";
+import SettingsIcon from "@mui/icons-material/Settings";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
@@ -28,13 +28,35 @@ import { createClient } from "@/lib/supabase/client";
 
 const DRAWER_WIDTH = 270;
 
+// Tri grupe (foldera) u sidebaru — svaka grupira intake-ove po form_type.
+const INTAKE_GROUPS = [
+  {
+    key: "upis_pd",
+    label: "Upisi prijediplomski",
+    icon: SchoolIcon,
+    aggregateHref: "/admin/upisi-prijediplomski",
+  },
+  {
+    key: "prijava_d",
+    label: "Prijave diplomski",
+    icon: AssignmentIcon,
+    aggregateHref: "/admin/prijave-diplomski",
+  },
+  {
+    key: "upis_d",
+    label: "Upisi diplomski",
+    icon: SchoolIcon,
+    aggregateHref: "/admin/upisi-diplomski",
+  },
+];
+
 export default function AdminNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState("");
-  const [myIntakes, setMyIntakes] = useState([]);
-  const [myPrijaveOpen, setMyPrijaveOpen] = useState(true);
+  const [intakes, setIntakes] = useState([]);
+  // ID (form_type key) grupe koja je trenutno otvorena; null ako je sve zatvoreno
+  const [openGroup, setOpenGroup] = useState(null);
 
   useEffect(() => {
     async function loadData() {
@@ -47,19 +69,61 @@ export default function AdminNav() {
       setUserEmail(user.email);
 
       const { data: roleData } = await supabase.from("admin_roles").select("role").eq("user_id", user.id).single();
-
       const superAdmin = roleData?.role === "super_admin";
       setIsSuperAdmin(superAdmin);
 
-      if (!superAdmin) {
-        // Dohvati intakes za ovog admina
-        const { data: intakeData } = await supabase.from("intake_admins").select("intake_id, intakes ( id, title, academic_year, slug, is_open )").eq("user_id", user.id);
-
-        setMyIntakes(intakeData?.map((d) => d.intakes).filter(Boolean) || []);
+      if (superAdmin) {
+        // Super admin vidi sve intake-e (uključujući zatvorene i nevidljive)
+        const { data } = await supabase
+          .from("intakes")
+          .select("id, title, academic_year, slug, is_open, form_type")
+          .order("academic_year", { ascending: false })
+          .order("sort_order", { ascending: true });
+        setIntakes(data || []);
+      } else {
+        // Regular admin vidi samo intake-e na koje ima permission preko intake_admins
+        const { data } = await supabase
+          .from("intake_admins")
+          .select("intakes ( id, title, academic_year, slug, is_open, form_type )")
+          .eq("user_id", user.id);
+        const flat = (data || []).map((d) => d.intakes).filter(Boolean);
+        // Sortiraj isto: newest academic year first, pa sort_order
+        flat.sort((a, b) => {
+          if (b.academic_year !== a.academic_year) return b.academic_year.localeCompare(a.academic_year);
+          return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        });
+        setIntakes(flat);
       }
     }
     loadData();
   }, []);
+
+  // Grupirano po form_type — {upis_pd: [...], prijava_d: [...], upis_d: [...]}
+  const grouped = useMemo(() => {
+    const g = { upis_pd: [], prijava_d: [], upis_d: [] };
+    for (const intake of intakes) {
+      if (g[intake.form_type]) g[intake.form_type].push(intake);
+    }
+    return g;
+  }, [intakes]);
+
+  // Auto-otvori grupu koja sadrži aktivan intake (ili čiji aggregate view je otvoren)
+  useEffect(() => {
+    for (const group of INTAKE_GROUPS) {
+      if (pathname.startsWith(group.aggregateHref)) {
+        setOpenGroup(group.key);
+        return;
+      }
+      if (pathname.startsWith("/admin/intake/")) {
+        const intakeId = pathname.split("/")[3];
+        const found = grouped[group.key]?.find((i) => i.id === intakeId);
+        if (found) {
+          setOpenGroup(group.key);
+          return;
+        }
+      }
+    }
+  }, [pathname, grouped]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -90,6 +154,74 @@ export default function AdminNav() {
     fontWeight: active ? 600 : 400,
     color: active ? "#fff" : "rgba(255,255,255,0.65)",
   });
+
+  // Renderiraj jedan intake-folder blok (header + child links)
+  const renderIntakeGroup = (group) => {
+    const Icon = group.icon;
+    const items = grouped[group.key] || [];
+    // "Active" znači: aggregate view otvoren, ILI aktivan intake unutar grupe
+    const isAggregateActive = isActive(group.aggregateHref);
+    const activeIntakeIdInGroup =
+      pathname.startsWith("/admin/intake/") &&
+      items.some((i) => i.id === pathname.split("/")[3]);
+    const groupHighlighted = isAggregateActive || activeIntakeIdInGroup;
+    const isOpen = openGroup === group.key;
+
+    return (
+      <Box key={group.key}>
+        <ListItemButton onClick={() => setOpenGroup(isOpen ? null : group.key)} sx={navItemSx(groupHighlighted)}>
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <Icon sx={iconSx(groupHighlighted)} />
+          </ListItemIcon>
+          <ListItemText primary={group.label} slotProps={{ primary: { sx: textSx(groupHighlighted) } }} />
+          {isOpen ? <ExpandLessIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.4)" }} /> : <ExpandMoreIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.4)" }} />}
+        </ListItemButton>
+
+        <Collapse in={isOpen} timeout="auto">
+          <List disablePadding sx={{ pl: 1 }}>
+            {items.length === 0 ? (
+              <Box sx={{ px: 2, py: 1 }}>
+                <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Nema upisa</Typography>
+              </Box>
+            ) : (
+              items.map((intake) => {
+                const href = `/admin/intake/${intake.id}`;
+                const active = pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <ListItemButton
+                    key={intake.id}
+                    component={Link}
+                    href={href}
+                    sx={{ ...navItemSx(active), py: 0.9 }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 28 }}>
+                      <FiberManualRecordIcon sx={{ fontSize: 7, color: active ? "#4aaed9" : "rgba(255,255,255,0.3)" }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={`${intake.title} · ${intake.academic_year}`}
+                      slotProps={{
+                        primary: {
+                          sx: {
+                            fontSize: "0.8rem",
+                            fontWeight: active ? 600 : 400,
+                            color: active ? "#fff" : "rgba(255,255,255,0.6)",
+                            lineHeight: 1.3,
+                          },
+                        },
+                      }}
+                    />
+                    {intake.is_open && (
+                      <Chip label="●" size="small" sx={{ height: 14, width: 14, minWidth: 14, background: "#10b981", "& .MuiChip-label": { p: 0, fontSize: 8 } }} />
+                    )}
+                  </ListItemButton>
+                );
+              })
+            )}
+          </List>
+        </Collapse>
+      </Box>
+    );
+  };
 
   return (
     <Drawer
@@ -128,102 +260,8 @@ export default function AdminNav() {
           );
         })()}
 
-        {/* Moje prijave — dropdown za regular admin */}
-        {!isSuperAdmin && (
-          <>
-            <ListItemButton onClick={() => setMyPrijaveOpen((p) => !p)} sx={navItemSx(pathname.startsWith("/admin/moje-prijave"))}>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <AssignmentIcon sx={iconSx(pathname.startsWith("/admin/moje-prijave"))} />
-              </ListItemIcon>
-              <ListItemText primary="Moje prijave" slotProps={{ primary: { sx: textSx(pathname.startsWith("/admin/moje-prijave")) } }} />
-              {myPrijaveOpen ? <ExpandLessIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.4)" }} /> : <ExpandMoreIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.4)" }} />}
-            </ListItemButton>
-
-            <Collapse in={myPrijaveOpen} timeout="auto">
-              <List disablePadding sx={{ pl: 1 }}>
-                {myIntakes.length === 0 ? (
-                  <Box sx={{ px: 2, py: 1 }}>
-                    <Typography sx={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Nije dodijeljen upis</Typography>
-                  </Box>
-                ) : (
-                  myIntakes.map((intake) => {
-                    const href = `/admin/moje-prijave/${intake.id}`;
-                    const active = pathname === href;
-                    return (
-                      <ListItemButton
-                        key={intake.id}
-                        component={Link}
-                        href={href}
-                        sx={{
-                          ...navItemSx(active),
-                          py: 0.9,
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 28 }}>
-                          <FiberManualRecordIcon sx={{ fontSize: 7, color: active ? "#4aaed9" : "rgba(255,255,255,0.3)" }} />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={`${intake.title} · ${intake.academic_year}`}
-                          slotProps={{
-                            primary: {
-                              sx: {
-                                fontSize: "0.8rem",
-                                fontWeight: active ? 600 : 400,
-                                color: active ? "#fff" : "rgba(255,255,255,0.6)",
-                                lineHeight: 1.3,
-                              },
-                            },
-                          }}
-                        />
-                        {intake.is_open && (
-                          <Chip label="●" size="small" sx={{ height: 14, width: 14, minWidth: 14, background: "#10b981", "& .MuiChip-label": { p: 0, fontSize: 8 } }} />
-                        )}
-                      </ListItemButton>
-                    );
-                  })
-                )}
-              </List>
-            </Collapse>
-          </>
-        )}
-
-        {/* Razdvojeno po razini — SVI admini (filtrirano po dozvolama) */}
-        {(() => {
-          const active = isActive("/admin/upisi-prijediplomski");
-          return (
-            <ListItemButton component={Link} href="/admin/upisi-prijediplomski" sx={navItemSx(active)}>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <SchoolIcon sx={iconSx(active)} />
-              </ListItemIcon>
-              <ListItemText primary="Upisi na prijediplomski" slotProps={{ primary: { sx: textSx(active) } }} />
-              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
-            </ListItemButton>
-          );
-        })()}
-        {(() => {
-          const active = isActive("/admin/prijave-diplomski");
-          return (
-            <ListItemButton component={Link} href="/admin/prijave-diplomski" sx={navItemSx(active)}>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <AssignmentIcon sx={iconSx(active)} />
-              </ListItemIcon>
-              <ListItemText primary="Prijave na diplomski" slotProps={{ primary: { sx: textSx(active) } }} />
-              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
-            </ListItemButton>
-          );
-        })()}
-        {(() => {
-          const active = isActive("/admin/upisi-diplomski");
-          return (
-            <ListItemButton component={Link} href="/admin/upisi-diplomski" sx={navItemSx(active)}>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <SchoolIcon sx={iconSx(active)} />
-              </ListItemIcon>
-              <ListItemText primary="Upisi na diplomski" slotProps={{ primary: { sx: textSx(active) } }} />
-              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
-            </ListItemButton>
-          );
-        })()}
+        {/* Tri intake grupe */}
+        {INTAKE_GROUPS.map(renderIntakeGroup)}
 
         {/* Upravljanje upisima */}
         {(() => {
@@ -231,7 +269,7 @@ export default function AdminNav() {
           return (
             <ListItemButton component={Link} href="/admin/upisi" sx={navItemSx(active)}>
               <ListItemIcon sx={{ minWidth: 36 }}>
-                <SchoolIcon sx={iconSx(active)} />
+                <SettingsIcon sx={iconSx(active)} />
               </ListItemIcon>
               <ListItemText primary="Upravljanje upisima" slotProps={{ primary: { sx: textSx(active) } }} />
               {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
@@ -239,7 +277,7 @@ export default function AdminNav() {
           );
         })()}
 
-{/* Super admin only */}
+        {/* Super admin only */}
         {isSuperAdmin && (
           <>
             {(() => {
@@ -255,8 +293,10 @@ export default function AdminNav() {
               );
             })()}
 
-
-            {(() => {
+            
+          </>
+        )}
+        {(() => {
               const active = isActive("/admin/otpad");
               return (
                 <ListItemButton component={Link} href="/admin/otpad" sx={navItemSx(active)}>
@@ -268,8 +308,6 @@ export default function AdminNav() {
                 </ListItemButton>
               );
             })()}
-          </>
-        )}
       </List>
 
       {/* User + Logout */}

@@ -40,7 +40,7 @@ export const applicationStatuses = {
   submitted: { label: "Zaprimljeno", color: "info", candidateCanEdit: true },
   in_review: { label: "U obradi", color: "warning", candidateCanEdit: false },
   needs_update: { label: "Potrebne izmjene", color: "error", candidateCanEdit: true },
-  accepted: { label: "Prihvaćeno", color: "success", candidateCanEdit: false },
+  accepted: { label: "Upisan", color: "success", candidateCanEdit: false },
   rejected: { label: "Odbijeno", color: "default", candidateCanEdit: false },
   cancelled: { label: "Otkazano", color: "default", candidateCanEdit: false },
 };
@@ -50,6 +50,12 @@ export const statusesWithMessage = ["needs_update"];
 
 // Statuses where email is sent to candidate (no message)
 export const statusesWithEmail = ["accepted", "rejected"];
+
+// Prijava je "zaključana" za pristupnika kad je referada preuzela obradu —
+// pristupnik više ne može sam mijenjati podatke ni tražiti edit link.
+export function isCandidateLocked(status) {
+  return applicationStatuses[status]?.candidateCanEdit === false;
+}
 
 export const studyPrograms = {
   prijediplomski: [

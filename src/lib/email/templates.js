@@ -158,10 +158,27 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
                 <a href="mailto:referada.diplomski@pfst.hr" style="color:#1B6CA8;">referada.diplomski@pfst.hr</a>.
               </p>`
     : `
-              ${infoBlock}`;
+              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
+                Vaš upis je službeno potvrđen. Dobrodošli na Pomorski fakultet u Splitu.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
+                O terminu preuzimanja studentske iskaznice i početku nastave obavijestit ćemo Vas naknadno.
+              </p>
+              <p style="margin:0;font-size:15px;color:#555;line-height:1.6;">
+                Za dodatne informacije obratite se referadi na
+                <a href="mailto:upisi@pfst.hr" style="color:#1B6CA8;">upisi@pfst.hr</a>.
+              </p>`;
+
+  // Za prijediplomski: "Upisani ste" — student je stvarno upisan.
+  // Za diplomski: "Prijava prihvaćena" — tek ulazi u razredbeni, još nije upisan.
+  const subjectLine = isDiplomski ? `Prijava prihvaćena — ${brojPrijave}` : `Upis potvrđen — ${brojPrijave}`;
+  const headline = isDiplomski ? "Prijava prihvaćena ✓" : "Upisani ste ✓";
+  const introSentence = isDiplomski
+    ? `S radošću Vam javljamo da je Vaša prijava za upis na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong> <strong style="color:#2E7D32;">prihvaćena</strong>.`
+    : `S radošću Vam javljamo da ste službeno <strong style="color:#2E7D32;">upisani</strong> na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong>.`;
 
   return {
-    subject: `Prijava prihvaćena — ${brojPrijave}`,
+    subject: subjectLine,
     html: `
 <!DOCTYPE html>
 <html lang="hr">
@@ -179,7 +196,7 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
           <tr>
             <td style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:40px;text-align:center;">
               <p style="margin:0 0 8px;color:rgba(255,255,255,0.7);font-size:13px;letter-spacing:2px;text-transform:uppercase;">Pomorski fakultet u Splitu</p>
-              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Prijava prihvaćena ✓</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">${headline}</h1>
             </td>
           </tr>
 
@@ -188,7 +205,7 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
             <td style="padding:40px;">
               <p style="margin:0 0 16px;font-size:16px;color:#333;">Poštovani/a <strong>${ime} ${prezime}</strong>,</p>
               <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
-                S radošću Vam javljamo da je Vaša prijava za upis na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong> <strong style="color:#2E7D32;">prihvaćena</strong>.
+                ${introSentence}
               </p>
               <p style="margin:0 0 8px;font-size:15px;color:#555;line-height:1.6;">
                 Broj prijave: <strong style="font-family:monospace;">${brojPrijave}</strong>

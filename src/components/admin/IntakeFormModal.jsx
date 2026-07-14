@@ -23,6 +23,7 @@ import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import ElectiveCoursesEditor from "@/components/admin/ElectiveCoursesEditor";
+import CandidateListManager from "@/components/admin/CandidateListManager";
 import { createIntake, updateIntake, getElectiveCourses, getElectiveRequirements } from "@/lib/intakes/actions";
 import { defaultElectiveCourses, defaultElectiveRequirements } from "@/config/electiveCoursesDefault";
 import * as XLSX from "xlsx";
@@ -353,6 +354,28 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
             />
           </Grid>
         </Grid>
+
+        {/* ── Lista kvalificiranih kandidata — samo za upis_pd ────── */}
+        {form.form_type === "upis_pd" && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--blue-dark)", mb: 0.5 }}>
+              Lista kvalificiranih kandidata
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+              Uploadajte listu OIB-a kandidata koji smiju predati prijavu, po studiju i vrsti studiranja.
+              Ako lista postoji, aplikacija će odbiti prijave OIB-a koji nisu na listi.
+              Ako lista ne postoji, prijava je otvorena svima.
+            </Typography>
+            {isEdit ? (
+              <CandidateListManager intakeId={intake.id} />
+            ) : (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Prvo spremite upis (dolje "Kreiraj"), zatim ćete moći dodati liste kandidata.
+              </Alert>
+            )}
+          </>
+        )}
 
         {/* ── Izborni predmeti — samo za upis_d ────────────────── */}
         {isUpisD && (

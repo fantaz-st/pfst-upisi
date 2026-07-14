@@ -9,7 +9,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import EditApplicationModal from "./EditApplicationModal";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
 
-export default function ApplicationActions({ application, intakeSlug, intakeStudyLevel, intakeFormType }) {
+export default function ApplicationActions({ application, intakeSlug, intakeStudyLevel, intakeFormType, backHref }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -48,6 +48,7 @@ export default function ApplicationActions({ application, intakeSlug, intakeStud
         applicationId={application.id}
         applicationNumber={application.application_number}
         applicantName={`${application.first_name} ${application.last_name}`}
+        redirectTo={backHref}
       />
     </>
   );

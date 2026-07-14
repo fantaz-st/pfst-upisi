@@ -8,9 +8,9 @@ import ApplicationsTable from "@/components/admin/ApplicationsTable";
 import IntakeTabs from "@/components/admin/IntakeTabs";
 import styles from "../../admin.module.css";
 
-export const metadata = { title: "Moje prijave — Admin" };
+export const metadata = { title: "Prijave po upisu — Admin" };
 
-export default async function MyIntakePage({ params }) {
+export default async function IntakePage({ params }) {
   const { intakeId } = await params;
   const supabase = await createClient();
 

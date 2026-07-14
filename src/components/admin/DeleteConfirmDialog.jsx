@@ -12,7 +12,7 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import { softDeleteApplication } from "@/lib/applications/actions";
 
-export default function DeleteConfirmDialog({ open, onClose, applicationId, applicationNumber, applicantName }) {
+export default function DeleteConfirmDialog({ open, onClose, applicationId, applicationNumber, applicantName, redirectTo }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -46,7 +46,7 @@ export default function DeleteConfirmDialog({ open, onClose, applicationId, appl
       setLoading(false);
     } else {
       // Force navigate away immediately
-      window.location.href = "/admin/moje-prijave";
+      window.location.href = redirectTo || "/admin/pocetna";
     }
   };
 
