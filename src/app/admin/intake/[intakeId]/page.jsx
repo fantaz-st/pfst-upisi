@@ -17,13 +17,21 @@ export default async function IntakePage({ params }) {
   const hasAccess = await canAccessIntake(intakeId);
   if (!hasAccess) redirect("/admin/sve-prijave");
 
-  const { data: intake } = await supabase
+  const { data: intake, error: intakeError } = await supabase
     .from("intakes")
     .select("id, title, academic_year, study_level, form_type, is_open")
     .eq("id", intakeId)
-    .single();
+    .maybeSingle();
 
-  if (!intake) notFound();
+  if (intakeError) {
+    console.error("[admin/intake] Supabase error loading intake", intakeId, intakeError);
+    throw new Error(`Neuspješno učitavanje upisa: ${intakeError.message}`);
+  }
+  if (!intake) {
+    console.error("[admin/intake] Intake not found — id:", intakeId,
+      "(hasAccess was true, but SELECT returned no row — vjerojatno RLS)");
+    notFound();
+  }
 
   // Pristup je već provjeren s canAccessIntake — admin vidi sve prijave ovog intakea
   const { data: applications } = await supabase

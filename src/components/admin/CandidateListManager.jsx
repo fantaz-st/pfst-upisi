@@ -19,12 +19,18 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TextField from "@mui/material/TextField";
 import Divider from "@mui/material/Divider";
+import Collapse from "@mui/material/Collapse";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import SearchIcon from "@mui/icons-material/Search";
 import { studyPrograms, studyTypes, getProgramLabel } from "@/lib/applications/config";
-import { uploadCandidateList, deleteCandidateList, getCandidateLists } from "@/lib/intakes/actions";
+import { uploadCandidateList, deleteCandidateList, getCandidateLists, getCandidateListDetails } from "@/lib/intakes/actions";
 import { createClient } from "@/lib/supabase/client";
 
 // Parser za XLS/XLSX/CSV
@@ -101,6 +107,12 @@ export default function CandidateListManager({ intakeId }) {
   const [parsedCandidates, setParsedCandidates] = useState(null);
   const [parseError, setParseError] = useState(null);
   const [manualOib, setManualOib] = useState("");
+
+  // Detalji liste (expand-on-click)
+  const [expandedKey, setExpandedKey] = useState(null);
+  const [detailsByKey, setDetailsByKey] = useState({}); // { key: [{oib, first_name, last_name, email}] }
+  const [detailsLoadingKey, setDetailsLoadingKey] = useState(null);
+  const [detailsSearch, setDetailsSearch] = useState("");
 
   const fileInputRef = useRef(null);
 
@@ -187,8 +199,36 @@ export default function CandidateListManager({ intakeId }) {
     setDeleting(key);
     const result = await deleteCandidateList({ intakeId, program, study_type });
     if (result.error) setError(result.error);
-    else await loadLists();
+    else {
+      // ako brišemo trenutno expanded, zatvori
+      if (expandedKey === key) setExpandedKey(null);
+      setDetailsByKey((prev) => {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      });
+      await loadLists();
+    }
     setDeleting(null);
+  };
+
+  const handleToggleExpand = async (program, study_type) => {
+    const key = `${program}__${study_type}`;
+    if (expandedKey === key) {
+      setExpandedKey(null);
+      return;
+    }
+    setExpandedKey(key);
+    setDetailsSearch("");
+    if (!detailsByKey[key]) {
+      setDetailsLoadingKey(key);
+      const result = await getCandidateListDetails({ intakeId, program, study_type });
+      if (result.candidates) {
+        setDetailsByKey((prev) => ({ ...prev, [key]: result.candidates }));
+      } else if (result.error) {
+        setError(result.error);
+      }
+      setDetailsLoadingKey(null);
+    }
   };
 
   const getStudyTypeLabel = (v) => studyTypes.find(t => t.value === v)?.label || v;
@@ -212,23 +252,120 @@ export default function CandidateListManager({ intakeId }) {
           </Typography>
           {lists.map(({ program, study_type, count }) => {
             const key = `${program}__${study_type}`;
+            const isExpanded = expandedKey === key;
+            const isLoadingDetails = detailsLoadingKey === key;
+            const candidates = detailsByKey[key] || [];
+            const q = detailsSearch.trim().toLowerCase();
+            const filteredCandidates = q
+              ? candidates.filter(
+                  (c) =>
+                    c.oib?.includes(q) ||
+                    c.first_name?.toLowerCase().includes(q) ||
+                    c.last_name?.toLowerCase().includes(q) ||
+                    c.email?.toLowerCase().includes(q)
+                )
+              : candidates;
             return (
-              <Box key={key} sx={{
-                display: "flex", alignItems: "center", gap: 1.5, py: 1,
-                borderBottom: "1px solid var(--gray-100)",
-              }}>
-                <CheckCircleIcon sx={{ fontSize: 16, color: "success.main" }} />
-                <Typography variant="body2" sx={{ flex: 1 }}>
-                  <strong>{getProgramLabel(program)}</strong> · {getStudyTypeLabel(study_type)}
-                </Typography>
-                <Chip label={`${count} kandidata`} size="small"
-                  sx={{ background: "var(--blue-pale)", color: "var(--blue-dark)", fontWeight: 600 }} />
-                <Button size="small" color="error" startIcon={
-                  deleting === key ? <CircularProgress size={12} /> : <DeleteIcon />
-                } onClick={() => handleDelete(program, study_type)}
-                  disabled={deleting !== null} sx={{ fontSize: "0.72rem", minWidth: 0, px: 1 }}>
-                  Obriši
-                </Button>
+              <Box key={key} sx={{ borderBottom: "1px solid var(--gray-100)" }}>
+                <Box
+                  sx={{
+                    display: "flex", alignItems: "center", gap: 1.5, py: 1,
+                    cursor: "pointer",
+                    "&:hover": { background: "rgba(0,0,0,0.02)" },
+                  }}
+                  onClick={() => handleToggleExpand(program, study_type)}
+                >
+                  <IconButton size="small" sx={{ p: 0.25 }}>
+                    {isExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                  </IconButton>
+                  <CheckCircleIcon sx={{ fontSize: 16, color: "success.main" }} />
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    <strong>{getProgramLabel(program)}</strong> · {getStudyTypeLabel(study_type)}
+                  </Typography>
+                  <Chip
+                    label={`${count} kandidata`}
+                    size="small"
+                    sx={{ background: "var(--blue-pale)", color: "var(--blue-dark)", fontWeight: 600 }}
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={deleting === key ? <CircularProgress size={12} /> : <DeleteIcon />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(program, study_type);
+                    }}
+                    disabled={deleting !== null}
+                    sx={{ fontSize: "0.72rem", minWidth: 0, px: 1 }}
+                  >
+                    Obriši
+                  </Button>
+                </Box>
+
+                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                  <Box sx={{ pl: 4, pr: 1, pb: 2, pt: 0.5 }}>
+                    {isLoadingDetails ? (
+                      <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                        <CircularProgress size={18} />
+                      </Box>
+                    ) : (
+                      <>
+                        <TextField
+                          size="small"
+                          placeholder="Pretraži po OIB-u, imenu, prezimenu ili emailu"
+                          value={detailsSearch}
+                          onChange={(e) => setDetailsSearch(e.target.value)}
+                          fullWidth
+                          sx={{ mb: 1.5 }}
+                          slotProps={{
+                            input: {
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <SearchIcon fontSize="small" sx={{ color: "var(--gray-400)" }} />
+                                </InputAdornment>
+                              ),
+                            },
+                          }}
+                        />
+                        <TableContainer sx={{ maxHeight: 320, border: "1px solid var(--gray-100)", borderRadius: 1 }}>
+                          <Table size="small" stickyHeader>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.72rem" }}>OIB</TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.72rem" }}>Prezime</TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.72rem" }}>Ime</TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.72rem" }}>Email</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {filteredCandidates.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={4} sx={{ textAlign: "center", color: "var(--gray-500)", fontSize: "0.8rem", py: 2 }}>
+                                    {q ? "Nema rezultata za pretragu." : "Lista je prazna."}
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                filteredCandidates.map((c) => (
+                                  <TableRow key={c.oib} hover>
+                                    <TableCell sx={{ fontFamily: "monospace", fontSize: "0.78rem" }}>{c.oib}</TableCell>
+                                    <TableCell sx={{ fontSize: "0.8rem" }}>{c.last_name || "—"}</TableCell>
+                                    <TableCell sx={{ fontSize: "0.8rem" }}>{c.first_name || "—"}</TableCell>
+                                    <TableCell sx={{ fontSize: "0.78rem", color: "var(--gray-600)" }}>{c.email || "—"}</TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        {q && (
+                          <Typography variant="caption" sx={{ display: "block", mt: 1, color: "var(--gray-500)" }}>
+                            Prikazano {filteredCandidates.length} od {candidates.length}
+                          </Typography>
+                        )}
+                      </>
+                    )}
+                  </Box>
+                </Collapse>
               </Box>
             );
           })}

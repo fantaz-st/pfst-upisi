@@ -273,3 +273,24 @@ export async function getCandidateLists(intakeId) {
     return { program, study_type, count };
   });
 }
+
+/**
+ * Vraća pune redove (OIB, ime, prezime, email) za točan (intake, program, study_type) trojac,
+ * sortirano po prezimenu pa imenu.
+ */
+export async function getCandidateListDetails({ intakeId, program, study_type }) {
+  const supabase = await createClient();
+  const auth = await assertCanManageIntake(supabase, intakeId);
+  if (auth.error) return { error: auth.error };
+
+  const { data, error } = await supabase
+    .from("intake_eligible_candidates")
+    .select("oib, first_name, last_name, email")
+    .eq("intake_id", intakeId)
+    .eq("program", program)
+    .eq("study_type", study_type)
+    .order("last_name", { ascending: true, nullsFirst: false })
+    .order("first_name", { ascending: true, nullsFirst: false });
+  if (error) return { error: error.message };
+  return { candidates: data || [] };
+}
