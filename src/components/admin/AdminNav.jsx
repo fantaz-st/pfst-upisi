@@ -3,6 +3,9 @@
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Drawer from "@mui/material/Drawer";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -12,6 +15,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
+import MenuIcon from "@mui/icons-material/Menu";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SchoolIcon from "@mui/icons-material/School";
@@ -57,6 +61,13 @@ export default function AdminNav() {
   const [intakes, setIntakes] = useState([]);
   // ID (form_type key) grupe koja je trenutno otvorena; null ako je sve zatvoreno
   const [openGroup, setOpenGroup] = useState(null);
+  // Mobile drawer toggle
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Zatvori mobile drawer nakon navigacije
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     async function loadData() {
@@ -223,21 +234,8 @@ export default function AdminNav() {
     );
   };
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: DRAWER_WIDTH,
-        flexShrink: 0,
-        "& .MuiDrawer-paper": {
-          width: DRAWER_WIDTH,
-          boxSizing: "border-box",
-          background: "#0f385c",
-          borderRight: "none",
-          boxShadow: "4px 0 24px rgba(15,56,92,0.15)",
-        },
-      }}
-    >
+  const drawerContent = (
+    <>
       {/* Logo */}
       <Box sx={{ px: 3, pt: 3, pb: 2.5 }}>
         <Image src="/logo.svg" alt="Pomorski fakultet" width={160} height={75} style={{ filter: "brightness(0) invert(1)" }} loading="eager" />
@@ -292,22 +290,20 @@ export default function AdminNav() {
                 </ListItemButton>
               );
             })()}
-
-            
           </>
         )}
         {(() => {
-              const active = isActive("/admin/otpad");
-              return (
-                <ListItemButton component={Link} href="/admin/otpad" sx={navItemSx(active)}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <DeleteIcon sx={iconSx(active)} />
-                  </ListItemIcon>
-                  <ListItemText primary="Obrisane prijave" slotProps={{ primary: { sx: textSx(active) } }} />
-                  {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
-                </ListItemButton>
-              );
-            })()}
+          const active = isActive("/admin/otpad");
+          return (
+            <ListItemButton component={Link} href="/admin/otpad" sx={navItemSx(active)}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <DeleteIcon sx={iconSx(active)} />
+              </ListItemIcon>
+              <ListItemText primary="Obrisane prijave" slotProps={{ primary: { sx: textSx(active) } }} />
+              {active && <Box sx={{ width: 3, height: 20, borderRadius: 2, background: "#058cc4" }} />}
+            </ListItemButton>
+          );
+        })()}
       </List>
 
       {/* User + Logout */}
@@ -325,6 +321,76 @@ export default function AdminNav() {
           <ListItemText primary="Odjava" slotProps={{ primary: { sx: { fontSize: "0.875rem", color: "rgba(255,255,255,0.55)" } } }} />
         </ListItemButton>
       </Box>
-    </Drawer>
+    </>
+  );
+
+  const drawerPaperSx = {
+    width: DRAWER_WIDTH,
+    boxSizing: "border-box",
+    background: "#0f385c",
+    borderRight: "none",
+    boxShadow: "4px 0 24px rgba(15,56,92,0.15)",
+  };
+
+  return (
+    <>
+      {/* Mobile AppBar — samo na xs/sm ekranima; sadrži hamburger + logo */}
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          display: { xs: "flex", md: "none" },
+          background: "#0f385c",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar variant="dense" sx={{ minHeight: 56, px: 2 }}>
+          <IconButton
+            edge="start"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Otvori navigaciju"
+            sx={{ color: "#fff", mr: 1.5 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Image
+            src="/logo.svg"
+            alt="Pomorski fakultet"
+            width={110}
+            height={40}
+            style={{ filter: "brightness(0) invert(1)" }}
+            loading="eager"
+          />
+        </Toolbar>
+      </AppBar>
+
+      {/* Temporary drawer — mobile (klizi s lijeva, close na overlay klik) */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: "block", md: "none" },
+          "& .MuiDrawer-paper": drawerPaperSx,
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* Permanent drawer — desktop */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: "none", md: "block" },
+          width: DRAWER_WIDTH,
+          flexShrink: 0,
+          "& .MuiDrawer-paper": drawerPaperSx,
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+    </>
   );
 }

@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }) {
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#F5F7FA" }}>
       <AdminNav user={user} />
-      <Box component="main" sx={{ flex: 1, overflow: "auto" }}>
+      <Box component="main" sx={{ flex: 1, overflow: "auto", pt: { xs: "56px", md: 0 }, minWidth: 0 }}>
         {children}
       </Box>
     </Box>

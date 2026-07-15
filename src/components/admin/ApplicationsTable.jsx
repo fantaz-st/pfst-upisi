@@ -251,7 +251,7 @@ export default function ApplicationsTable({
           placeholder="Pretraži po imenu, OIB-u, broju prijave, emailu..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          sx={{ minWidth: 280, background: "white", borderRadius: 2 }}
+          sx={{ minWidth: { xs: "100%", sm: 280 }, background: "white", borderRadius: 2 }}
           slotProps={{
             input: {
               startAdornment: (
@@ -264,7 +264,7 @@ export default function ApplicationsTable({
         />
 
         {/* Filter po studiju */}
-        <FormControl size="small" sx={{ minWidth: 180 }}>
+        <FormControl size="small" sx={{ minWidth: { xs: "48%", sm: 180 }, flex: { xs: 1, sm: "unset" } }}>
           <InputLabel>Studij</InputLabel>
           <Select value={programFilter} label="Studij" onChange={(e) => setProgramFilter(e.target.value)} sx={{ borderRadius: 2, background: "white" }}>
             <MenuItem value="">Svi studiji</MenuItem>
@@ -278,7 +278,7 @@ export default function ApplicationsTable({
 
         {/* Filter po statusu (samo active mode) */}
         {!isTrash && (
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: "48%", sm: 160 }, flex: { xs: 1, sm: "unset" } }}>
             <InputLabel>Status</InputLabel>
             <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)} sx={{ borderRadius: 2, background: "white" }}>
               <MenuItem value="">Svi statusi</MenuItem>
@@ -291,7 +291,7 @@ export default function ApplicationsTable({
           </FormControl>
         )}
 
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
 
         {/* Rezultat */}
         <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
@@ -420,20 +420,20 @@ export default function ApplicationsTable({
             <TableHead>
               <TableRow>
                 {(isTrash || !isTrash) && (
-                  <TableCell padding="checkbox">
+                  <TableCell padding="checkbox" sx={{ display: { xs: "none", md: "table-cell" } }}>
                     <Checkbox size="small" checked={allSelected} indeterminate={someSelected && !allSelected} onChange={handleSelectAll} disabled={selectableIds.length === 0} />
                   </TableCell>
                 )}
-                <TableCell sx={{ width: 48 }}>#</TableCell>
-                <TableCell>Broj prijave</TableCell>
+                <TableCell sx={{ width: 48, display: { xs: "none", md: "table-cell" } }}>#</TableCell>
+                <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>Broj prijave</TableCell>
                 <TableCell>Ime i prezime</TableCell>
-                <TableCell>OIB</TableCell>
-                <TableCell>Email</TableCell>
+                <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>OIB</TableCell>
+                <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>Email</TableCell>
                 <TableCell>Studij</TableCell>
-                <TableCell>Vrsta upisa</TableCell>
-                <TableCell>Ak. godina</TableCell>
+                <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>Vrsta upisa</TableCell>
+                <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>Ak. godina</TableCell>
                 {!isTrash && <TableCell>Status</TableCell>}
-                <TableCell>{isTrash ? "Obrisano" : "Datum"}</TableCell>
+                <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>{isTrash ? "Obrisano" : "Datum"}</TableCell>
                 <TableCell align="right">Akcija</TableCell>
               </TableRow>
             </TableHead>
@@ -452,20 +452,24 @@ export default function ApplicationsTable({
 
                   return (
                     <TableRow key={app.id} hover={canAccess} selected={isSelected} sx={{ "&:last-child td": { border: 0 }, opacity: canAccess ? 1 : 0.35 }}>
-                      <TableCell padding="checkbox">
+                      <TableCell padding="checkbox" sx={{ display: { xs: "none", md: "table-cell" } }}>
                         <Checkbox size="small" checked={isSelected} onChange={() => handleSelect(app.id)} disabled={!canAccess} />
                       </TableCell>
-                      <TableCell sx={{ color: "text.disabled", fontWeight: 600, fontSize: "0.8rem" }}>{index + 1}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ color: "text.disabled", fontWeight: 600, fontSize: "0.8rem", display: { xs: "none", md: "table-cell" } }}>{index + 1}</TableCell>
+                      <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
                         <span className={styles.appNumber}>{app.application_number}</span>
                       </TableCell>
                       <TableCell>
                         <span className={styles.nameCell}>
                           {app.first_name} {app.last_name}
                         </span>
+                        {/* Na mobile-u ispod imena prikazujemo broj prijave malim fontom */}
+                        <Box sx={{ display: { xs: "block", sm: "none" }, mt: 0.25 }}>
+                          <span className={styles.appNumber} style={{ fontSize: "0.7rem", opacity: 0.7 }}>{app.application_number}</span>
+                        </Box>
                       </TableCell>
-                      <TableCell sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{app.oib}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ fontFamily: "monospace", fontSize: "0.8rem", display: { xs: "none", lg: "table-cell" } }}>{app.oib}</TableCell>
+                      <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>
                         <span className={styles.secondaryText}>{app.email}</span>
                       </TableCell>
                       <TableCell>
@@ -475,10 +479,10 @@ export default function ApplicationsTable({
                           sx={{ fontWeight: 700, fontSize: "0.7rem", background: "var(--blue-pale)", color: "var(--blue-dark)" }}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
                         <span className={styles.secondaryText}>{app.intakes?.title ?? "—"}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
                         <span className={styles.secondaryText}>{app.intakes?.academic_year ?? "—"}</span>
                       </TableCell>
                       {!isTrash && (
@@ -486,7 +490,7 @@ export default function ApplicationsTable({
                           <StatusChip status={app.status} />
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
                         <span className={styles.secondaryText}>{dateVal ? new Date(dateVal).toLocaleDateString("hr-HR") : "—"}</span>
                       </TableCell>
                       <TableCell align="right">
