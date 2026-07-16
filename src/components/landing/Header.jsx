@@ -6,7 +6,7 @@ import Image from "next/image";
 import styles from "./Header.module.css";
 
 const navLinks = [
-  { href: "#upisi", label: "Pregled prijava" },
+  { href: "#upisi", label: "Upisi i prijave" },
   { href: "/status", label: "Provjera statusa" },
 ];
 

@@ -59,14 +59,14 @@ export default async function HomePage() {
             <div className={styles.heroDash} />
 
             <p className={styles.heroSubtitle}>
-              Odaberite jednu od ponuđenih prijava i ispunite je. <br className={styles.subBreak} />
+              Odaberite jednu od ponuđenih prijava ili upisa i ispunite je. <br className={styles.subBreak} />
               Priložite tražene dokumente i pratite status vaše prijave.
             </p>
 
             <div className={styles.heroActions}>
               <a href="#upisi" className={styles.heroCta}>
                 <AssignmentIcon sx={{ fontSize: 19 }} />
-                Pregled prijava
+                Upisi i prijave
                 <span className={styles.heroCtaArrow}>→</span>
               </a>
               <a href="/status" className={styles.heroCtaOutline}>
@@ -81,9 +81,9 @@ export default async function HomePage() {
       {/* Intakes */}
       <Box id="upisi" className={styles.intakesSection}>
         <Container maxWidth="lg">
-          <span className={styles.sectionEyebrow}>Dostupne prijave</span>
+          {/* <span className={styles.sectionEyebrow}>Dostupne prijave i upisi</span> */}
           <Typography variant="h2" className={styles.sectionTitle}>
-            Otvorene prijave
+            Otvorene prijave i upisi
           </Typography>
           {/* <Typography className={styles.sectionSubtitle}>Odaberite jednu od otvorenih prijava i ispunite obrazac za upis.</Typography> */}
           <IntakeCards intakes={intakes} />
@@ -123,9 +123,9 @@ export default async function HomePage() {
       {/* How it works */}
       <Box className={styles.howSection}>
         <Container maxWidth="lg">
-          <span className={styles.sectionEyebrow}>Proces prijave</span>
+          {/* <span className={styles.sectionEyebrow}></span> */}
           <Typography variant="h2" className={styles.sectionTitle}>
-            Kako funkcionira?
+            Kako funkcionira proces upisa?
           </Typography>
           <div className={styles.stepsGrid}>
             {steps.map((step) => (

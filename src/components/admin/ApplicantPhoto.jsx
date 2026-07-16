@@ -50,11 +50,11 @@ export default function ApplicantPhoto({ documents, firstName, lastName }) {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: 200 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: { xs: 160, sm: 200 } }}>
       <Box
         sx={{
-          width: 200,
-          height: 200,
+          width: { xs: 160, sm: 200 },
+          height: { xs: 160, sm: 200 },
           borderRadius: 2,
           overflow: "hidden",
           border: "2px solid",

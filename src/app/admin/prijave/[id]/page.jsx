@@ -68,23 +68,31 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1.5, md: 3 }, overflowX: "hidden" }}>
       <Button href={backHref} startIcon={<ArrowBackIcon />} sx={{ mb: 3, borderRadius: "100px" }} size="small">
         Nazad
       </Button>
 
       {/* Header */}
       <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start", mb: 4, flexWrap: "wrap" }}>
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--blue-main)", letterSpacing: "0.08em", textTransform: "uppercase", mb: 0.5 }}>
             {application.intakes?.title} · {application.intakes?.academic_year}
           </Box>
-          <Box sx={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--blue-dark)", letterSpacing: "-0.02em" }}>
+          <Box sx={{ fontSize: { xs: "1.25rem", md: "1.5rem" }, fontWeight: 700, color: "var(--blue-dark)", letterSpacing: "-0.02em", wordBreak: "break-word" }}>
             {application.first_name} {application.last_name}
           </Box>
           <Box sx={{ fontSize: "0.82rem", fontFamily: "monospace", color: "var(--gray-400)", mt: 0.25 }}>{application.application_number}</Box>
         </Box>
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+            flexWrap: "wrap",
+            width: { xs: "100%", sm: "auto" },
+          }}
+        >
           <Chip label={statusConfig.label} color={statusConfig.color} sx={{ fontWeight: 700 }} />
           <ApplicationActions
             application={application}
@@ -102,9 +110,9 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
           {/* Osobni podaci */}
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Osobni podaci</div>
-            <Box sx={{ display: "flex", gap: 2.5, mb: 2 }}>
+            <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2.5, mb: 2, alignItems: { xs: "center", sm: "flex-start" } }}>
               <ApplicantPhoto documents={application.application_documents} firstName={application.first_name} lastName={application.last_name} />
-              <Box sx={{ flex: 1 }}>
+              <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
                 <InfoRow label="JMBAG" value={application.jmbag} />
                 <InfoRow label="Email" value={application.email} />
                 <InfoRow label="Mobitel" value={application.phone} />

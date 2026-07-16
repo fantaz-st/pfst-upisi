@@ -109,6 +109,7 @@
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--gray-100);
+  min-width: 0;
 }
 
 .infoRow:last-child {
@@ -127,6 +128,9 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--blue-dark);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ─── Section Paper ─────────────────────────────────────── */
@@ -151,4 +155,28 @@
 .rowNoAccess {
   opacity: 0.35;
   pointer-events: none;
+}
+
+/* ─── Mobile: tighten label column, allow long values to wrap ── */
+@media (max-width: 600px) {
+  .infoLabel {
+    min-width: 96px;
+    font-size: 0.75rem;
+  }
+  .infoValue {
+    font-size: 0.82rem;
+  }
+  .sectionPaper {
+    padding: 16px;
+  }
+  .infoRow {
+    padding: 8px 0;
+    gap: 8px;
+  }
+  .pageHeader {
+    margin-bottom: 20px;
+  }
+  .pageTitle {
+    font-size: 1.25rem;
+  }
 }

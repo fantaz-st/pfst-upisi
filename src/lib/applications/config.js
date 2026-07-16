@@ -62,14 +62,14 @@ export const studyPrograms = {
     { value: "bs", label: "Brodostrojarstvo" },
     { value: "pn", label: "Pomorska nautika" },
     { value: "peit", label: "Pomorske elektrotehničke i informatičke tehnologije" },
-    { value: "pm", label: "Pomorski Menadžment" },
+    { value: "pm", label: "Pomorski menadžment" },
     { value: "ptjm", label: "Pomorske tehnologije jahta i marina" },
   ],
   diplomski: [
     { value: "bs", label: "Brodostrojarstvo" },
     { value: "pn", label: "Pomorska nautika" },
     { value: "peit", label: "Pomorske elektrotehničke i informatičke tehnologije" },
-    { value: "pm", label: "Pomorski Menadžment" },
+    { value: "pm", label: "Pomorski menadžment" },
   ],
 };
 
