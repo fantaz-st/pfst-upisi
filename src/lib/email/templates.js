@@ -1,3 +1,11 @@
+// ─────────────────────────────────────────────────────────────
+// Konfiguracija — mijenjati po potrebi svake akademske godine
+// ─────────────────────────────────────────────────────────────
+
+// Rok do kada upisani studenti mogu tražiti potvrde o upisu.
+// Koristi se u emailPrihvaceno (prijediplomski). Ažuriraj svake godine.
+const POTVRDA_ROK = "četvrtka, 23. srpnja 2026. godine";
+
 export function emailPotvrda({ ime, prezime, brojPrijave, studij, akademskaGodina }) {
   return {
     subject: `Potvrda prijave — ${brojPrijave}`,
@@ -148,8 +156,19 @@ export function emailPotrebneIzmjene({ ime, prezime, brojPrijave, poruka, magicL
 
 export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGodina, studyLevel }) {
   const isDiplomski = studyLevel === "diplomski";
-  const infoBlock = isDiplomski
+
+  const subjectLine = isDiplomski ? `Prijava prihvaćena — ${brojPrijave}` : `Upis potvrđen — ${brojPrijave}`;
+  const headline = isDiplomski ? "Prijava prihvaćena ✓" : "Upisani ste ✓";
+
+  const bodyBlock = isDiplomski
     ? `
+              <p style="margin:0 0 16px;font-size:16px;color:#333;">Poštovani/a <strong>${ime} ${prezime}</strong>,</p>
+              <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+                S radošću Vam javljamo da je Vaša prijava za upis na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong> <strong style="color:#2E7D32;">prihvaćena</strong>.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;color:#555;line-height:1.6;">
+                Broj prijave: <strong style="font-family:monospace;">${brojPrijave}</strong>
+              </p>
               <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
                 Vaša prijava sada ulazi u <strong>razredbeni postupak</strong>. Nakon objave rang-liste obavijestit ćemo Vas o daljnjim koracima. Ako ostvarite pravo na upis, zaprimit ćete zaseban e-mail s poveznicom za online upis.
               </p>
@@ -158,24 +177,27 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
                 <a href="mailto:referada.diplomski@pfst.hr" style="color:#1B6CA8;">referada.diplomski@pfst.hr</a>.
               </p>`
     : `
+              <p style="margin:0 0 16px;font-size:16px;color:#333;">Poštovani/a <strong>${ime} ${prezime}</strong>,</p>
               <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
-                Vaš upis je službeno potvrđen. Dobrodošli na Pomorski fakultet u Splitu.
+                Obavještavamo Vas da je studentska referada pregledala vašu prijavu i potvrdila upis.
               </p>
               <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
-                O terminu preuzimanja studentske iskaznice i početku nastave obavijestit ćemo Vas naknadno.
+                Službeno ste upisani na <strong style="color:#2E7D32;">${studij}</strong> u akademskoj godini <strong>${akademskaGodina}</strong>.
               </p>
-              <p style="margin:0;font-size:15px;color:#555;line-height:1.6;">
-                Za dodatne informacije obratite se referadi na
-                <a href="mailto:upisi@pfst.hr" style="color:#1B6CA8;">upisi@pfst.hr</a>.
+              <p style="margin:0 0 24px;font-size:15px;color:#333;line-height:1.6;font-weight:600;">
+                Dobrodošli na Pomorski fakultet u Splitu!
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
+                O datumu početka nastave i terminima preuzimanja studentskih iskaznica (X-ica) obavijestit ćemo Vas naknadno putem web stranice Fakulteta
+                (<a href="https://www.pfst.unist.hr" style="color:#1B6CA8;">www.pfst.unist.hr</a>).
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
+                Ukoliko su Vam potrebne potvrde o upisu, iste možete zatražiti putem maila
+                <a href="mailto:upisi@pfst.hr" style="color:#1B6CA8;">upisi@pfst.hr</a> do ${POTVRDA_ROK}.
+              </p>
+              <p style="margin:24px 0 0;font-size:13px;color:#888;line-height:1.5;border-top:1px solid #E0E0E0;padding-top:12px;">
+                Broj prijave: <strong style="font-family:monospace;">${brojPrijave}</strong>
               </p>`;
-
-  // Za prijediplomski: "Upisani ste" — student je stvarno upisan.
-  // Za diplomski: "Prijava prihvaćena" — tek ulazi u razredbeni, još nije upisan.
-  const subjectLine = isDiplomski ? `Prijava prihvaćena — ${brojPrijave}` : `Upis potvrđen — ${brojPrijave}`;
-  const headline = isDiplomski ? "Prijava prihvaćena ✓" : "Upisani ste ✓";
-  const introSentence = isDiplomski
-    ? `S radošću Vam javljamo da je Vaša prijava za upis na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong> <strong style="color:#2E7D32;">prihvaćena</strong>.`
-    : `S radošću Vam javljamo da ste službeno <strong style="color:#2E7D32;">upisani</strong> na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong>.`;
 
   return {
     subject: subjectLine,
@@ -191,7 +213,7 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-          
+
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:40px;text-align:center;">
@@ -203,14 +225,7 @@ export function emailPrihvaceno({ ime, prezime, brojPrijave, studij, akademskaGo
           <!-- Body -->
           <tr>
             <td style="padding:40px;">
-              <p style="margin:0 0 16px;font-size:16px;color:#333;">Poštovani/a <strong>${ime} ${prezime}</strong>,</p>
-              <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
-                ${introSentence}
-              </p>
-              <p style="margin:0 0 8px;font-size:15px;color:#555;line-height:1.6;">
-                Broj prijave: <strong style="font-family:monospace;">${brojPrijave}</strong>
-              </p>
-              ${infoBlock}
+              ${bodyBlock}
             </td>
           </tr>
 
