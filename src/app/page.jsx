@@ -81,7 +81,6 @@ export default async function HomePage() {
       {/* Intakes */}
       <Box id="upisi" className={styles.intakesSection}>
         <Container maxWidth="lg">
-          {/* <span className={styles.sectionEyebrow}>Dostupne prijave i upisi</span> */}
           <Typography variant="h2" className={styles.sectionTitle}>
             Otvorene prijave i upisi
           </Typography>
