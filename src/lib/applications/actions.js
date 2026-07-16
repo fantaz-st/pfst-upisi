@@ -330,7 +330,7 @@ export async function updateApplicationViaToken(token, data) {
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")
-    .select("*, applications ( id, oib, status, email, first_name, last_name, application_number, intakes ( academic_year ) )")
+    .select("*, applications ( id, oib, status, email, first_name, last_name, application_number, intake_id, intakes ( academic_year ) )")
     .eq("token", token)
     .single();
 
@@ -350,6 +350,35 @@ export async function updateApplicationViaToken(token, data) {
   const parsed = personalInfoSchema.safeParse(data);
   if (!parsed.success) {
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  // Provjera prava upisa (ista logika kao u submitApplication) — ako je kandidat
+  // preko magic linka promijenio studij ili vrstu studiranja, mora biti na listi
+  // za novi izbor. Napomena: OIB se ne mijenja (uzimamo application.oib).
+  {
+    const { count: totalListCount } = await supabase
+      .from("intake_eligible_candidates")
+      .select("*", { count: "exact", head: true })
+      .eq("intake_id", application.intake_id);
+
+    if (totalListCount && totalListCount > 0) {
+      const { data: match } = await supabase
+        .from("intake_eligible_candidates")
+        .select("oib")
+        .eq("intake_id", application.intake_id)
+        .eq("program", parsed.data.program)
+        .eq("study_type", parsed.data.study_type)
+        .eq("oib", application.oib)
+        .maybeSingle();
+
+      if (!match) {
+        return {
+          error:
+            "Nemate pravo upisa za odabrani studij i vrstu studiranja. " +
+            "Odaberite kombinaciju za koju ste kvalificirani ili se javite referadi.",
+        };
+      }
+    }
   }
 
   const { error: updateError } = await supabase

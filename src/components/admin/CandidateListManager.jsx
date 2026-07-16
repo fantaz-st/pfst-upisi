@@ -33,7 +33,46 @@ import { studyPrograms, studyTypes, getProgramLabel } from "@/lib/applications/c
 import { uploadCandidateList, deleteCandidateList, getCandidateLists, getCandidateListDetails } from "@/lib/intakes/actions";
 import { createClient } from "@/lib/supabase/client";
 
+// Normaliziraj tekst za lako uspoređivanje header ćelija
+const norm = (s) => String(s ?? "").toLowerCase().trim().replace(/\s+/g, " ");
+
+// Pronađi index kolone čiji header sadrži bilo koji od keyword-a
+function findCol(headerRow, keywords) {
+  for (let i = 0; i < headerRow.length; i++) {
+    const cell = norm(headerRow[i]);
+    if (!cell) continue;
+    for (const kw of keywords) {
+      if (cell === norm(kw) || cell.includes(norm(kw))) return i;
+    }
+  }
+  return -1;
+}
+
+// OIB: točno 11 znamenki. Excel često skine vodeću nulu i pretvori u broj —
+// ako imamo 10 znamenki, dodajemo vodeću nulu.
+function normalizeOib(v) {
+  const digits = String(v ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 11) return digits;
+  if (digits.length === 10) return "0" + digits;
+  return "";
+}
+
+// "Prezime, Ime" → { first_name, last_name }. Podržava i "Ime Prezime" fallback.
+function splitKandidat(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return { first_name: "", last_name: "" };
+  if (s.includes(",")) {
+    const [ln, fn] = s.split(",", 2).map((x) => x.trim());
+    return { first_name: fn || "", last_name: ln || "" };
+  }
+  // Nema zareza — pretpostavljamo "Ime Prezime" (npr. ručno unesen slučaj)
+  const parts = s.split(/\s+/);
+  return { first_name: parts[0] || "", last_name: parts.slice(1).join(" ") };
+}
+
 // Parser za XLS/XLSX/CSV
+// Vraća { candidates, skipped: { noRight, invalidOib } } — za feedback korisniku
 async function parseFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -46,43 +85,79 @@ async function parseFile(file) {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
-        if (!rows.length) return resolve([]);
+        if (!rows.length) return resolve({ candidates: [], skipped: { noRight: 0, invalidOib: 0 } });
 
-        // Provjeri je li prvi red header
-        const firstRow = rows[0].map(c => String(c).toLowerCase().trim());
-        const hasHeader = firstRow.some(c =>
-          c.includes("prezime") || c.includes("ime") || c.includes("oib") || c.includes("name")
-        );
-
-        const dataRows = hasHeader ? rows.slice(1) : rows;
-
-        const candidates = [];
-        for (const row of dataRows) {
-          if (!row.length) continue;
-
-          let oib = "", first_name = "", last_name = "", email = "";
-
-          if (hasHeader) {
-            // Mapiraj po kolonama iz headera (e-Škola format)
-            // Prezime=0, Ime=1, OIB=2, email=5
-            last_name = String(row[0] || "").trim();
-            first_name = String(row[1] || "").trim();
-            oib = String(row[2] || "").trim().replace(/\D/g, "");
-            email = String(row[5] || "").trim();
-          } else {
-            // Bez headera — prvi stupac koji izgleda kao OIB (11 znamenki)
-            for (const cell of row) {
-              const clean = String(cell).trim().replace(/\D/g, "");
-              if (clean.length === 11) { oib = clean; break; }
-            }
-          }
-
-          if (oib.length === 11) {
-            candidates.push({ oib, first_name, last_name, email });
+        // Pronađi prvi red koji izgleda kao header (sadrži "oib" ili "kandidat" ili "prezime")
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(rows.length, 5); i++) {
+          const joined = rows[i].map(norm).join("|");
+          if (joined.includes("oib") || joined.includes("kandidat") || joined.includes("prezime")) {
+            headerRowIdx = i;
+            break;
           }
         }
 
-        resolve(candidates);
+        const hasHeader = headerRowIdx >= 0;
+        const headerRow = hasHeader ? rows[headerRowIdx] : [];
+        const dataRows = hasHeader ? rows.slice(headerRowIdx + 1) : rows;
+
+        // Detektiraj kolone po imenu — podržava razne varijante formata
+        const oibCol = findCol(headerRow, ["oib"]);
+        const kandidatCol = findCol(headerRow, ["kandidat"]);
+        const lastNameCol = findCol(headerRow, ["prezime"]);
+        const firstNameCol = findCol(headerRow, ["ime"]);
+        const emailCol = findCol(headerRow, ["email", "e-mail", "e mail"]);
+        const pravoUpisaCol = findCol(headerRow, ["pravo upisa"]);
+
+        const candidates = [];
+        let skippedNoRight = 0;
+        let skippedInvalidOib = 0;
+        const seenOib = new Set();
+
+        for (const row of dataRows) {
+          if (!row.length || row.every((c) => String(c ?? "").trim() === "")) continue;
+
+          // Filter: preskoči kandidate bez prava upisa
+          if (pravoUpisaCol >= 0) {
+            const pravo = norm(row[pravoUpisaCol]);
+            if (pravo && pravo !== "da") {
+              skippedNoRight++;
+              continue;
+            }
+          }
+
+          // OIB — bilo iz nazvanog stupca, bilo prvi cell koji izgleda kao 10/11 znamenki
+          let oib = "";
+          if (oibCol >= 0) {
+            oib = normalizeOib(row[oibCol]);
+          } else {
+            for (const cell of row) {
+              const candidate = normalizeOib(cell);
+              if (candidate) { oib = candidate; break; }
+            }
+          }
+          if (!oib) {
+            skippedInvalidOib++;
+            continue;
+          }
+          if (seenOib.has(oib)) continue;
+          seenOib.add(oib);
+
+          // Ime + prezime
+          let first_name = "", last_name = "";
+          if (kandidatCol >= 0) {
+            ({ first_name, last_name } = splitKandidat(row[kandidatCol]));
+          } else {
+            if (firstNameCol >= 0) first_name = String(row[firstNameCol] ?? "").trim();
+            if (lastNameCol >= 0) last_name = String(row[lastNameCol] ?? "").trim();
+          }
+
+          const email = emailCol >= 0 ? String(row[emailCol] ?? "").trim() : "";
+
+          candidates.push({ oib, first_name, last_name, email });
+        }
+
+        resolve({ candidates, skipped: { noRight: skippedNoRight, invalidOib: skippedInvalidOib } });
       } catch (err) {
         reject(err);
       }
@@ -131,22 +206,41 @@ export default function CandidateListManager({ intakeId }) {
     setLoading(false);
   }
 
+  // Dodatna info nakon parse-a (npr. koliko preskočeno zbog 'Pravo upisa = Ne')
+  const [parseInfo, setParseInfo] = useState(null);
+
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
     setParseError(null);
+    setParseInfo(null);
     setParsedCandidates(null);
 
     try {
-      const candidates = await parseFile(file);
+      const { candidates, skipped } = await parseFile(file);
       if (!candidates.length) {
-        setParseError("Nije pronađen nijedan OIB u datoteci.");
+        if (skipped.noRight > 0 || skipped.invalidOib > 0) {
+          setParseError(
+            `Nije pronađen nijedan valjani kandidat. ` +
+            `Preskočeno: ${skipped.noRight} bez prava upisa, ${skipped.invalidOib} bez valjanog OIB-a.`
+          );
+        } else {
+          setParseError("Nije pronađen nijedan OIB u datoteci. Provjerite da tablica sadrži stupac 'OIB' i 'Kandidat' (ili 'Prezime, Ime').");
+        }
         return;
       }
       setParsedCandidates(candidates);
+      if (skipped.noRight > 0 || skipped.invalidOib > 0) {
+        const parts = [];
+        if (skipped.noRight > 0) parts.push(`${skipped.noRight} bez prava upisa`);
+        if (skipped.invalidOib > 0) parts.push(`${skipped.invalidOib} bez valjanog OIB-a`);
+        setParseInfo(`Prepoznat ${candidates.length} kandidata. Preskočeno: ${parts.join(", ")}.`);
+      } else {
+        setParseInfo(`Prepoznat ${candidates.length} kandidata.`);
+      }
     } catch (err) {
-      setParseError("Greška pri čitanju datoteke. Provjerite format.");
+      setParseError("Greška pri čitanju datoteke. Provjerite format (podržan: XLS, XLSX, CSV).");
     }
   };
 
@@ -440,6 +534,7 @@ export default function CandidateListManager({ intakeId }) {
       </Box>
 
       {parseError && <Alert severity="error" sx={{ mb: 1.5 }}>{parseError}</Alert>}
+      {parseInfo && !parseError && <Alert severity="info" sx={{ mb: 1.5 }}>{parseInfo}</Alert>}
 
       {/* Preview */}
       {parsedCandidates?.length > 0 && (
