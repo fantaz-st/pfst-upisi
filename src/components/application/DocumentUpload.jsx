@@ -18,7 +18,41 @@ export default function DocumentUpload({ documentType, label, required, onFileCh
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
 
-  const handleFileChange = (e) => {
+  // Kompresira sliku client-side kroz canvas. PDF-ove prosljeđuje netaknute.
+  // Za skenove ID-a / uplatnica kvaliteta 0.85 na max 2000px je vizualno identična
+  // originalu ali datoteka je često 5-10× manja — kritično za mobilnu prijavu
+  // (kraći upload = manja šansa za tab suspend na iOS/Android).
+  const compressImageIfNeeded = async (file) => {
+    if (file.type === "application/pdf") return file;
+    if (!file.type.startsWith("image/")) return file;
+    if (file.size < 500 * 1024) return file; // < 500KB — nema smisla
+
+    try {
+      const bitmap = await createImageBitmap(file);
+      const MAX_DIM = 2000;
+      const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
+      const w = Math.round(bitmap.width * scale);
+      const h = Math.round(bitmap.height * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      bitmap.close?.();
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+      if (!blob || blob.size >= file.size) return file;
+
+      const compressedName = file.name.replace(/\.(png|jpg|jpeg|heic|webp)$/i, ".jpg");
+      return new File([blob], compressedName, { type: "image/jpeg" });
+    } catch (err) {
+      console.warn("Image compression failed, using original:", err);
+      return file;
+    }
+  };
+
+  const handleFileChange = async (e) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
@@ -33,10 +67,11 @@ export default function DocumentUpload({ documentType, label, required, onFileCh
     }
 
     setError(null);
-    setFile(selected);
-    onFileChange(selected);
-    // Reset input so same file can be re-selected
-    e.target.value = "";
+    e.target.value = ""; // reset rano — ako compression baci, isti file može ponovo
+
+    const processed = await compressImageIfNeeded(selected);
+    setFile(processed);
+    onFileChange(processed);
   };
 
   const handleRemove = () => {

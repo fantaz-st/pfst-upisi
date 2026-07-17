@@ -121,43 +121,68 @@ export default function ApplicationForm({ intake }) {
     ...(needsOccupationalMedicine ? ["occupational_medicine_certificate"] : []),
   ];
 
-  // Klijent-side upload direktno u Supabase Storage.
-  // Uploadi idu paralelno preko Promise.allSettled — pojedini fail ne prekida ostale.
-  // Vraća: { uploaded: [meta], failed: [{documentType, error}] }
+  // Progress state — prikazuje se tijekom uploada da user zna da nije zapelo
+  const [uploadProgress, setUploadProgress] = useState(null); // { current, total, label }
+
+  // Sekvencijalni klijent-side upload direktno u Supabase Storage.
+  // - Wake Lock spriječava screen dim tijekom uploada (mobilni Safari/Chrome)
+  // - Sekvencijalno jer LTE mreže bolje handle-aju jedan po jedan
+  // - Ako datoteka padne, nastavljamo — sve failure-e brojimo, klijent odlučuje
   const uploadFilesToStorage = async (applicationId, files) => {
     const supabase = createBrowserSupabase();
+    const valid = files.filter((f) => f.file);
 
-    const results = await Promise.allSettled(
-      files
-        .filter((f) => f.file) // ignoriraj prazne slotove
-        .map(async ({ documentType, file }) => {
-          const timestamp = Date.now();
-          const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const filePath = `applications/${applicationId}/${documentType}/${timestamp}-${sanitizedName}`;
+    // Zatraži screen wake lock (mobilni browseri) da spriječimo tab suspend
+    let wakeLock = null;
+    try {
+      if (typeof navigator !== "undefined" && navigator.wakeLock) {
+        wakeLock = await navigator.wakeLock.request("screen");
+      }
+    } catch {
+      /* ignore — nije podržano ili blokirano */
+    }
 
+    const uploaded = [];
+    const failed = [];
+
+    try {
+      for (let i = 0; i < valid.length; i++) {
+        const { documentType, file } = valid[i];
+        setUploadProgress({
+          current: i + 1,
+          total: valid.length,
+          label: documentTypeLabels[documentType] || documentType,
+        });
+
+        const timestamp = Date.now();
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "file";
+        const filePath = `applications/${applicationId}/${documentType}/${timestamp}-${sanitizedName}`;
+
+        try {
           const { error } = await supabase.storage
             .from("application-documents")
-            .upload(filePath, file, { contentType: file.type, upsert: documentType === "photo" });
-
+            .upload(filePath, file, {
+              contentType: file.type || "application/octet-stream",
+              upsert: documentType === "photo",
+            });
           if (error) throw new Error(error.message || "Upload failed");
-
-          return {
+          uploaded.push({
             documentType,
             filePath,
             fileName: file.name,
             mimeType: file.type,
             sizeBytes: file.size,
-          };
-        })
-    );
+          });
+        } catch (err) {
+          console.error(`Upload failed for ${documentType}:`, err);
+          failed.push({ documentType, error: err.message || String(err) });
+        }
+      }
+    } finally {
+      setUploadProgress(null);
+      try { await wakeLock?.release?.(); } catch { /* ignore */ }
+    }
 
-    const uploaded = [];
-    const failed = [];
-    results.forEach((r, i) => {
-      const src = files.filter((f) => f.file)[i];
-      if (r.status === "fulfilled") uploaded.push(r.value);
-      else failed.push({ documentType: src.documentType, error: r.reason?.message || "Unknown error" });
-    });
     return { uploaded, failed };
   };
 
@@ -166,12 +191,45 @@ export default function ApplicationForm({ intake }) {
     setServerError(null);
 
     try {
-      const result = await submitApplication(data, intake.slug, force);
+      // 1. Priprema datoteka i UUID-a UNAPRIJED. Datoteke se uploadaju
+      //    PRIJE nego što išta upišemo u DB. Ako upload padne, nema DB rowa —
+      //    nema "prazne prijave" u admin panelu.
+      const applicationId = crypto.randomUUID();
+      const filesToUpload = combinedMode
+        ? [
+            { documentType: "photo", file: photo },
+            { documentType: "combined_documents", file: combinedFile },
+          ]
+        : [{ documentType: "photo", file: photo }, ...Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))];
+
+      const uploadResult = await uploadFilesToStorage(applicationId, filesToUpload);
+
+      if (uploadResult.failed.length > 0) {
+        const failedNames = uploadResult.failed
+          .map((f) => documentTypeLabels[f.documentType] || f.documentType)
+          .join(", ");
+        setServerError(
+          `Prijava NIJE poslana. Nije se uspjelo prenijeti: ${failedNames}. ` +
+            `Provjerite internet vezu i pokušajte ponovo. Preporuka: ako ste na 4G/LTE-u, prebacite se na Wi-Fi.`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Tek sad zovemo submit — s pre-alociranim UUID-om i doc metadata.
+      //    Server insertira application row + document_documents redove u istom pozivu.
+      //    Ako itko od tih insertova padne, server napravi rollback.
+      const result = await submitApplication(data, intake.slug, force, {
+        applicationId,
+        documentsMeta: uploadResult.uploaded,
+      });
 
       if (result.duplicate) {
         setPendingFormData(data);
         setDuplicateInfo(result);
         setIsSubmitting(false);
+        // Napomena: već-uploadane datoteke ostaju kao orphan u storage-u
+        // dok se ne pokrene periodički cleanup. Ne blokira user flow.
         return;
       }
 
@@ -179,48 +237,6 @@ export default function ApplicationForm({ intake }) {
         setServerError(result.error);
         setIsSubmitting(false);
         return;
-      }
-
-      if (result.applicationId) {
-        // Klijent-side upload direktno u Supabase Storage (paralelno, po datoteci).
-        // Ovim izbjegavamo Vercel serverless timeout (10s Hobby / 60s Pro) i
-        // ~1 MB body limit Next server action-a — datoteke ne prolaze kroz Vercel.
-        const filesToUpload = combinedMode
-          ? [
-              { documentType: "photo", file: photo },
-              { documentType: "combined_documents", file: combinedFile },
-            ]
-          : [{ documentType: "photo", file: photo }, ...Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))];
-
-        const uploadResult = await uploadFilesToStorage(result.applicationId, filesToUpload);
-
-        if (uploadResult.failed.length > 0) {
-          // Nešto nije prošlo. Prijava POSTOJI u DB-u (application row je već insertiran),
-          // ali dokumenti su djelomično uspjeli. Prikazujemo jasnu poruku umjesto tihog redirecta.
-          const failedNames = uploadResult.failed
-            .map((f) => documentTypeLabels[f.documentType] || f.documentType)
-            .join(", ");
-          setServerError(
-            `Prijava je zaprimljena (broj ${result.applicationNumber}), ali nisu se uspjeli prenijeti sljedeći dokumenti: ${failedNames}. ` +
-              `Molimo pokušajte ponovo — zapis prijave je sačuvan pa duplikat neće biti kreiran. ` +
-              `Ako se problem ponavlja, javite se referadi.`
-          );
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Meta-only server action — samo INSERT u application_documents, bez file uploada
-        if (uploadResult.uploaded.length > 0) {
-          const metaResult = await attachDocumentsMeta(result.applicationId, uploadResult.uploaded);
-          if (metaResult.error) {
-            setServerError(
-              `Prijava je zaprimljena (broj ${result.applicationNumber}), datoteke su prenesene, ali evidencija dokumenata nije spremljena: ${metaResult.error}. ` +
-                `Javite se referadi s ovim brojem prijave.`
-            );
-            setIsSubmitting(false);
-            return;
-          }
-        }
       }
 
       router.push(`/prijava/uspjesno?broj=${result.applicationNumber}`);
@@ -760,12 +776,23 @@ export default function ApplicationForm({ intake }) {
         </Alert>
       )}
 
+      {uploadProgress && (
+        <Alert severity="info" icon={<CircularProgress size={18} />} sx={{ mb: 3 }}>
+          <Box sx={{ fontWeight: 600, mb: 0.5 }}>
+            Prijenos dokumenata: {uploadProgress.current} od {uploadProgress.total} — {uploadProgress.label}
+          </Box>
+          <Box sx={{ fontSize: "0.85rem" }}>
+            <strong>Nemojte zatvarati stranicu, zaključavati telefon ili prebacivati u drugu aplikaciju</strong> dok prijenos ne završi.
+          </Box>
+        </Alert>
+      )}
+
       <Box className={styles.submitContainer}>
         <Button type="submit" variant="contained" size="large" disabled={isSubmitting} className={styles.submitButton}>
           {isSubmitting ? (
             <>
               <CircularProgress size={18} sx={{ mr: 1, color: "#fff" }} />
-              Slanje...
+              {uploadProgress ? `Prijenos ${uploadProgress.current}/${uploadProgress.total}...` : "Slanje..."}
             </>
           ) : (
             "Pošalji prijavu"

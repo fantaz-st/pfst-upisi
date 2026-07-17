@@ -8,7 +8,7 @@ import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno, ema
 import { getProgramLabel, applicationStatuses, isCandidateLocked } from "@/lib/applications/config";
 import { revalidatePath } from "next/cache";
 
-export async function submitApplication(formData, slug, force = false) {
+export async function submitApplication(formData, slug, force = false, options = {}) {
   const supabase = await createClient();
 
   const { data: intake, error: intakeError } = await supabase
@@ -129,9 +129,15 @@ export async function submitApplication(formData, slug, force = false) {
 
   const application_number = generateApplicationNumber();
 
+  // Klijent može predati unaprijed generirani UUID + metadata prethodno uploadanih
+  // datoteka. Ako neki od tih koraka padne, aplikacija se ROLL-BACK-a (delete row),
+  // tako da nikad ne ostane "prazna" prijava u DB-u.
+  const { applicationId: preAllocatedId, documentsMeta = [] } = options;
+
   const { data: application, error: insertError } = await supabase
     .from("applications")
     .insert({
+      ...(preAllocatedId ? { id: preAllocatedId } : {}),
       intake_id: intake.id,
       application_number,
       first_name,
@@ -170,6 +176,26 @@ export async function submitApplication(formData, slug, force = false) {
   if (insertError) {
     console.error("Insert error:", insertError);
     return { error: "Greška pri slanju prijave. Pokušajte ponovo." };
+  }
+
+  // Ako klijent je predao doc metadata, insertaj u istoj akciji.
+  // Ako insert doc metadata padne, rollback-aj application row.
+  if (documentsMeta.length > 0) {
+    const docRows = documentsMeta.map((d) => ({
+      application_id: application.id,
+      document_type: d.documentType,
+      file_path: d.filePath,
+      file_name: d.fileName,
+      mime_type: d.mimeType,
+      size_bytes: d.sizeBytes,
+    }));
+    const { error: docsError } = await supabase.from("application_documents").insert(docRows);
+    if (docsError) {
+      console.error("Documents insert failed, rolling back application:", docsError);
+      // Rollback — application row bez dokumenata je nepoželjno stanje
+      await supabase.from("applications").delete().eq("id", application.id);
+      return { error: "Greška pri spremanju dokumenata. Pokušajte ponovo." };
+    }
   }
 
   try {
@@ -447,7 +473,7 @@ export async function checkApplicationStatus(applicationNumber, oib) {
   return { ...data, study_level: data.intakes?.study_level };
 }
 
-export async function submitApplicationD(formData, slug, filesToUpload = []) {
+export async function submitApplicationD(formData, slug, filesToUpload = [], options = {}) {
   const supabase = await createClient();
 
   // Dohvati intake
@@ -493,10 +519,12 @@ export async function submitApplicationD(formData, slug, filesToUpload = []) {
   if (existing) return { error: "Prijava s ovim OIB-om već postoji za ovaj upisni rok." };
 
   const application_number = generateApplicationNumber();
+  const { applicationId: preAllocatedId, documentsMeta = [] } = options;
 
   const { data: application, error: insertError } = await supabase
     .from("applications")
     .insert({
+      ...(preAllocatedId ? { id: preAllocatedId } : {}),
       intake_id: intake.id,
       application_number,
       first_name,
@@ -525,7 +553,26 @@ export async function submitApplicationD(formData, slug, filesToUpload = []) {
     return { error: "Greška pri slanju prijave. Pokušajte ponovo." };
   }
 
-  // Upload dokumenata
+  // Ako klijent je predao doc metadata (upload-first tok), insertaj u istoj akciji.
+  // Ako insert padne, rollback application row.
+  if (documentsMeta.length > 0) {
+    const docRows = documentsMeta.map((d) => ({
+      application_id: application.id,
+      document_type: d.documentType,
+      file_path: d.filePath,
+      file_name: d.fileName,
+      mime_type: d.mimeType,
+      size_bytes: d.sizeBytes,
+    }));
+    const { error: docsError } = await supabase.from("application_documents").insert(docRows);
+    if (docsError) {
+      console.error("Documents insert failed (D), rolling back application:", docsError);
+      await supabase.from("applications").delete().eq("id", application.id);
+      return { error: "Greška pri spremanju dokumenata. Pokušajte ponovo." };
+    }
+  }
+
+  // Backward compat: stari flow s filesToUpload još radi (ne koristi se, ali ostaje)
   if (filesToUpload.length > 0) {
     await uploadDocuments(application.id, filesToUpload);
   }

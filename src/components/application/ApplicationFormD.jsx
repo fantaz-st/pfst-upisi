@@ -114,63 +114,74 @@ export default function ApplicationFormD({ intake }) {
       ? [{ documentType: "combined_documents", file: combinedFile }]
       : Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }));
 
-    // Mapiramo country → citizenship jer actions.js to koristi
-    // Prijave submitamo BEZ datoteka — file upload ide direktno iz browsera
-    // u Supabase Storage nakon što dobijemo applicationId (izbjegavamo Vercel timeout).
-    const result = await submitApplicationD(
-      { ...data, citizenship: data.country },
-      intake.slug,
-      [] // datoteke se šalju kasnije, klijent-side
-    );
+    // Upload PRIJE nego što išta upišemo u DB — ako padne, nema orphan prijave.
+    const applicationId = crypto.randomUUID();
+    let documentsMeta = [];
 
-    if (result?.error) {
-      setServerError(result.error);
-      return;
-    }
-
-    if (result?.applicationId && filesToUpload.length > 0) {
+    if (filesToUpload.length > 0) {
       const supabase = createBrowserSupabase();
-      const uploadResults = await Promise.allSettled(
-        filesToUpload
-          .filter((f) => f.file)
-          .map(async ({ documentType, file }) => {
-            const timestamp = Date.now();
-            const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-            const filePath = `applications/${result.applicationId}/${documentType}/${timestamp}-${sanitizedName}`;
+
+      // Wake lock da se tab ne suspenda tijekom uploada
+      let wakeLock = null;
+      try {
+        if (typeof navigator !== "undefined" && navigator.wakeLock) {
+          wakeLock = await navigator.wakeLock.request("screen");
+        }
+      } catch { /* ignore */ }
+
+      const uploaded = [];
+      let failedCount = 0;
+
+      try {
+        // Sekvencijalno — LTE mreže bolje handle-aju jedan po jedan
+        for (const { documentType, file } of filesToUpload.filter((f) => f.file)) {
+          const timestamp = Date.now();
+          const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "file";
+          const filePath = `applications/${applicationId}/${documentType}/${timestamp}-${sanitizedName}`;
+          try {
             const { error } = await supabase.storage
               .from("application-documents")
-              .upload(filePath, file, { contentType: file.type, upsert: false });
+              .upload(filePath, file, { contentType: file.type || "application/octet-stream", upsert: false });
             if (error) throw new Error(error.message);
-            return {
+            uploaded.push({
               documentType,
               filePath,
               fileName: file.name,
               mimeType: file.type,
               sizeBytes: file.size,
-            };
-          })
-      );
-
-      const uploaded = uploadResults.filter((r) => r.status === "fulfilled").map((r) => r.value);
-      const failedCount = uploadResults.filter((r) => r.status === "rejected").length;
+            });
+          } catch (err) {
+            console.error(`Upload failed for ${documentType}:`, err);
+            failedCount++;
+          }
+        }
+      } finally {
+        try { await wakeLock?.release?.(); } catch { /* ignore */ }
+      }
 
       if (failedCount > 0) {
         setServerError(
-          `Prijava je zaprimljena (broj ${result.applicationNumber}), ali nisu se prenijeli svi dokumenti (${failedCount} od ${filesToUpload.length}). ` +
-            "Pokušajte poslati prijavu ponovo — postojeći zapis će biti prepoznat."
+          `Prijava NIJE poslana. Nije se prenijelo ${failedCount} od ${filesToUpload.length} dokumenata. ` +
+            "Provjerite internetsku vezu i pokušajte ponovo. Preporuka: prebacite se na Wi-Fi ako ste na 4G/LTE-u."
         );
         return;
       }
 
-      if (uploaded.length > 0) {
-        const metaResult = await attachDocumentsMeta(result.applicationId, uploaded);
-        if (metaResult?.error) {
-          setServerError(
-            `Prijava je zaprimljena, dokumenti preneseni, ali evidencija dokumenata nije spremljena. Javite se referadi s brojem ${result.applicationNumber}.`
-          );
-          return;
-        }
-      }
+      documentsMeta = uploaded;
+    }
+
+    // Tek sad submit — s pre-alociranim ID-om i metadata za već uploadane datoteke.
+    // Ako submit padne, orphan datoteke ostaju u storage-u za kasniji cleanup.
+    const result = await submitApplicationD(
+      { ...data, citizenship: data.country },
+      intake.slug,
+      [],
+      { applicationId, documentsMeta }
+    );
+
+    if (result?.error) {
+      setServerError(result.error);
+      return;
     }
 
     if (result?.success) window.location.href = "/prijava/uspjesno?broj=" + result.applicationNumber;

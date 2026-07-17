@@ -316,7 +316,9 @@ export default function ApplicationsTable({
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                   {selected.map((v) => {
                     const p = allPrograms.find((x) => x.value === v);
-                    return <Chip key={v} label={p ? p.label : v} size="small" sx={{ height: 22, fontSize: "0.72rem", background: "var(--blue-pale)", color: "var(--blue-dark)" }} />;
+                    return (
+                      <Chip key={v} label={p ? p.label : v} size="small" sx={{ height: 22, fontSize: "0.72rem", background: "var(--blue-pale)", color: "var(--blue-dark)" }} />
+                    );
                   })}
                 </Box>
               );
@@ -533,7 +535,9 @@ export default function ApplicationsTable({
                         </span>
                         {/* Na mobile-u ispod imena prikazujemo broj prijave malim fontom */}
                         <Box sx={{ display: { xs: "block", sm: "none" }, mt: 0.25 }}>
-                          <span className={styles.appNumber} style={{ fontSize: "0.7rem", opacity: 0.7 }}>{app.application_number}</span>
+                          <span className={styles.appNumber} style={{ fontSize: "0.7rem", opacity: 0.7 }}>
+                            {app.application_number}
+                          </span>
                         </Box>
                       </TableCell>
                       <TableCell sx={{ fontFamily: "monospace", fontSize: "0.8rem", display: { xs: "none", lg: "table-cell" } }}>{app.oib}</TableCell>
@@ -559,7 +563,18 @@ export default function ApplicationsTable({
                         </TableCell>
                       )}
                       <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
-                        <span className={styles.secondaryText}>{dateVal ? new Date(dateVal).toLocaleDateString("hr-HR") : "—"}</span>
+                        <span className={styles.secondaryText}>
+                          {dateVal
+                            ? new Date(dateVal).toLocaleString("hr-HR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })
+                            : "—"}
+                        </span>
                       </TableCell>
                       <TableCell align="right">
                         {isTrash ? (
@@ -593,7 +608,12 @@ export default function ApplicationsTable({
                           </Box>
                         ) : canAccess ? (
                           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                            <Button href={`${linkPrefix}/${app.id}?from=${encodeURIComponent(pathname)}`} size="small" variant="outlined" sx={{ borderRadius: "100px", fontSize: "0.75rem" }}>
+                            <Button
+                              href={`${linkPrefix}/${app.id}?from=${encodeURIComponent(pathname)}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ borderRadius: "100px", fontSize: "0.75rem" }}
+                            >
                               Pregled
                             </Button>
                             <Button
