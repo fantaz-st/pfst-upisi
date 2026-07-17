@@ -30,7 +30,8 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import GavelIcon from "@mui/icons-material/Gavel";
 import { fullApplicationSchema } from "@/lib/applications/validation";
-import { submitApplication, requestEditLinkForExisting } from "@/lib/applications/actions";
+import { submitApplication, requestEditLinkForExisting, attachDocumentsMeta } from "@/lib/applications/actions";
+import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import DocumentUpload from "./DocumentUpload";
 import PhotoUpload from "./PhotoUpload";
 import { applicationConfigs, documentTypeLabels, studyPrograms, studyTypes, enrollmentTypeOptions, enrollmentTypeRequiresTuition } from "@/lib/applications/config";
@@ -120,6 +121,46 @@ export default function ApplicationForm({ intake }) {
     ...(needsOccupationalMedicine ? ["occupational_medicine_certificate"] : []),
   ];
 
+  // Klijent-side upload direktno u Supabase Storage.
+  // Uploadi idu paralelno preko Promise.allSettled — pojedini fail ne prekida ostale.
+  // Vraća: { uploaded: [meta], failed: [{documentType, error}] }
+  const uploadFilesToStorage = async (applicationId, files) => {
+    const supabase = createBrowserSupabase();
+
+    const results = await Promise.allSettled(
+      files
+        .filter((f) => f.file) // ignoriraj prazne slotove
+        .map(async ({ documentType, file }) => {
+          const timestamp = Date.now();
+          const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const filePath = `applications/${applicationId}/${documentType}/${timestamp}-${sanitizedName}`;
+
+          const { error } = await supabase.storage
+            .from("application-documents")
+            .upload(filePath, file, { contentType: file.type, upsert: documentType === "photo" });
+
+          if (error) throw new Error(error.message || "Upload failed");
+
+          return {
+            documentType,
+            filePath,
+            fileName: file.name,
+            mimeType: file.type,
+            sizeBytes: file.size,
+          };
+        })
+    );
+
+    const uploaded = [];
+    const failed = [];
+    results.forEach((r, i) => {
+      const src = files.filter((f) => f.file)[i];
+      if (r.status === "fulfilled") uploaded.push(r.value);
+      else failed.push({ documentType: src.documentType, error: r.reason?.message || "Unknown error" });
+    });
+    return { uploaded, failed };
+  };
+
   const doSubmit = async (data, force = false) => {
     setIsSubmitting(true);
     setServerError(null);
@@ -141,14 +182,45 @@ export default function ApplicationForm({ intake }) {
       }
 
       if (result.applicationId) {
-        const { uploadDocuments } = await import("@/lib/applications/actions");
+        // Klijent-side upload direktno u Supabase Storage (paralelno, po datoteci).
+        // Ovim izbjegavamo Vercel serverless timeout (10s Hobby / 60s Pro) i
+        // ~1 MB body limit Next server action-a — datoteke ne prolaze kroz Vercel.
         const filesToUpload = combinedMode
           ? [
               { documentType: "photo", file: photo },
               { documentType: "combined_documents", file: combinedFile },
             ]
           : [{ documentType: "photo", file: photo }, ...Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }))];
-        await uploadDocuments(result.applicationId, filesToUpload);
+
+        const uploadResult = await uploadFilesToStorage(result.applicationId, filesToUpload);
+
+        if (uploadResult.failed.length > 0) {
+          // Nešto nije prošlo. Prijava POSTOJI u DB-u (application row je već insertiran),
+          // ali dokumenti su djelomično uspjeli. Prikazujemo jasnu poruku umjesto tihog redirecta.
+          const failedNames = uploadResult.failed
+            .map((f) => documentTypeLabels[f.documentType] || f.documentType)
+            .join(", ");
+          setServerError(
+            `Prijava je zaprimljena (broj ${result.applicationNumber}), ali nisu se uspjeli prenijeti sljedeći dokumenti: ${failedNames}. ` +
+              `Molimo pokušajte ponovo — zapis prijave je sačuvan pa duplikat neće biti kreiran. ` +
+              `Ako se problem ponavlja, javite se referadi.`
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Meta-only server action — samo INSERT u application_documents, bez file uploada
+        if (uploadResult.uploaded.length > 0) {
+          const metaResult = await attachDocumentsMeta(result.applicationId, uploadResult.uploaded);
+          if (metaResult.error) {
+            setServerError(
+              `Prijava je zaprimljena (broj ${result.applicationNumber}), datoteke su prenesene, ali evidencija dokumenata nije spremljena: ${metaResult.error}. ` +
+                `Javite se referadi s ovim brojem prijave.`
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        }
       }
 
       router.push(`/prijava/uspjesno?broj=${result.applicationNumber}`);

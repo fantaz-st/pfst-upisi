@@ -25,7 +25,8 @@ import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import FolderIcon from "@mui/icons-material/Folder";
 import { studyPrograms, studyTypes, documentTypeLabels, getDiplomskiPreviousStudyOptions, getDiplomskiRequiredDocuments } from "@/lib/applications/config";
-import { submitApplicationD } from "@/lib/applications/actions";
+import { submitApplicationD, attachDocumentsMeta } from "@/lib/applications/actions";
+import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import DocumentUpload from "@/components/application/DocumentUpload";
 import styles from "./ApplicationForm.module.css";
 
@@ -114,13 +115,64 @@ export default function ApplicationFormD({ intake }) {
       : Object.entries(uploadedFiles).map(([documentType, file]) => ({ documentType, file }));
 
     // Mapiramo country → citizenship jer actions.js to koristi
+    // Prijave submitamo BEZ datoteka — file upload ide direktno iz browsera
+    // u Supabase Storage nakon što dobijemo applicationId (izbjegavamo Vercel timeout).
     const result = await submitApplicationD(
       { ...data, citizenship: data.country },
       intake.slug,
-      filesToUpload
+      [] // datoteke se šalju kasnije, klijent-side
     );
 
-    if (result?.error) setServerError(result.error);
+    if (result?.error) {
+      setServerError(result.error);
+      return;
+    }
+
+    if (result?.applicationId && filesToUpload.length > 0) {
+      const supabase = createBrowserSupabase();
+      const uploadResults = await Promise.allSettled(
+        filesToUpload
+          .filter((f) => f.file)
+          .map(async ({ documentType, file }) => {
+            const timestamp = Date.now();
+            const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+            const filePath = `applications/${result.applicationId}/${documentType}/${timestamp}-${sanitizedName}`;
+            const { error } = await supabase.storage
+              .from("application-documents")
+              .upload(filePath, file, { contentType: file.type, upsert: false });
+            if (error) throw new Error(error.message);
+            return {
+              documentType,
+              filePath,
+              fileName: file.name,
+              mimeType: file.type,
+              sizeBytes: file.size,
+            };
+          })
+      );
+
+      const uploaded = uploadResults.filter((r) => r.status === "fulfilled").map((r) => r.value);
+      const failedCount = uploadResults.filter((r) => r.status === "rejected").length;
+
+      if (failedCount > 0) {
+        setServerError(
+          `Prijava je zaprimljena (broj ${result.applicationNumber}), ali nisu se prenijeli svi dokumenti (${failedCount} od ${filesToUpload.length}). ` +
+            "Pokušajte poslati prijavu ponovo — postojeći zapis će biti prepoznat."
+        );
+        return;
+      }
+
+      if (uploaded.length > 0) {
+        const metaResult = await attachDocumentsMeta(result.applicationId, uploaded);
+        if (metaResult?.error) {
+          setServerError(
+            `Prijava je zaprimljena, dokumenti preneseni, ali evidencija dokumenata nije spremljena. Javite se referadi s brojem ${result.applicationNumber}.`
+          );
+          return;
+        }
+      }
+    }
+
     if (result?.success) window.location.href = "/prijava/uspjesno?broj=" + result.applicationNumber;
   };
 

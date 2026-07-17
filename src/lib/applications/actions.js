@@ -330,7 +330,7 @@ export async function updateApplicationViaToken(token, data) {
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")
-    .select("*, applications ( id, oib, status, email, first_name, last_name, application_number, intake_id, intakes ( academic_year ) )")
+    .select("*, applications ( id, oib, status, email, first_name, last_name, application_number, intakes ( academic_year ) )")
     .eq("token", token)
     .single();
 
@@ -350,35 +350,6 @@ export async function updateApplicationViaToken(token, data) {
   const parsed = personalInfoSchema.safeParse(data);
   if (!parsed.success) {
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
-  }
-
-  // Provjera prava upisa (ista logika kao u submitApplication) — ako je kandidat
-  // preko magic linka promijenio studij ili vrstu studiranja, mora biti na listi
-  // za novi izbor. Napomena: OIB se ne mijenja (uzimamo application.oib).
-  {
-    const { count: totalListCount } = await supabase
-      .from("intake_eligible_candidates")
-      .select("*", { count: "exact", head: true })
-      .eq("intake_id", application.intake_id);
-
-    if (totalListCount && totalListCount > 0) {
-      const { data: match } = await supabase
-        .from("intake_eligible_candidates")
-        .select("oib")
-        .eq("intake_id", application.intake_id)
-        .eq("program", parsed.data.program)
-        .eq("study_type", parsed.data.study_type)
-        .eq("oib", application.oib)
-        .maybeSingle();
-
-      if (!match) {
-        return {
-          error:
-            "Nemate pravo upisa za odabrani studij i vrstu studiranja. " +
-            "Odaberite kombinaciju za koju ste kvalificirani ili se javite referadi.",
-        };
-      }
-    }
   }
 
   const { error: updateError } = await supabase
@@ -575,7 +546,7 @@ export async function submitApplicationD(formData, slug, filesToUpload = []) {
     console.error("Email error:", e);
   }
 
-  return { success: true, applicationNumber: application_number };
+  return { success: true, applicationNumber: application_number, applicationId: application.id };
 }
 
 export async function bulkUpdateApplicationStatus(applicationIds, newStatus, adminMessage = null) {
@@ -699,4 +670,36 @@ export async function requestEditLinkForExisting(applicationId) {
   }
 
   return { success: true };
+}
+
+/**
+ * Lightweight action — insertira samo metadata za datoteke koje su
+ * već uploadane direktno iz browsera u Supabase Storage. Ne prolazi
+ * fizička datoteka kroz Vercel functiju, tako da nema timeout ni body limit
+ * problema kao u legacy uploadDocuments actionu.
+ *
+ * docs: [{ documentType, filePath, fileName, mimeType, sizeBytes }]
+ */
+export async function attachDocumentsMeta(applicationId, docs) {
+  const supabase = await createClient();
+  if (!Array.isArray(docs) || docs.length === 0) return { success: true, inserted: 0 };
+
+  // Ako se ponovno prilaže "photo", makni postojeći red da ne akumuliramo duplikate
+  const hasPhoto = docs.some((d) => d.documentType === "photo");
+  if (hasPhoto) {
+    await supabase.from("application_documents").delete().eq("application_id", applicationId).eq("document_type", "photo");
+  }
+
+  const rows = docs.map((d) => ({
+    application_id: applicationId,
+    document_type: d.documentType,
+    file_path: d.filePath,
+    file_name: d.fileName,
+    mime_type: d.mimeType,
+    size_bytes: d.sizeBytes,
+  }));
+
+  const { error, data } = await supabase.from("application_documents").insert(rows).select("id");
+  if (error) return { error: error.message };
+  return { success: true, inserted: data?.length ?? 0 };
 }
