@@ -76,24 +76,47 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
       {/* Header */}
       <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start", mb: 4, flexWrap: "wrap" }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--blue-main)", letterSpacing: "0.08em", textTransform: "uppercase", mb: 0.5 }}>
-            {application.intakes?.title} · {application.intakes?.academic_year}
+          {/* Intake title + status chip (chip inline s naslovom samo na mobitelu) */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
+            <Box sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--blue-main)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {application.intakes?.title} · {application.intakes?.academic_year}
+            </Box>
+            <Chip
+              label={statusConfig.label}
+              color={statusConfig.color}
+              size="small"
+              sx={{
+                display: { xs: "inline-flex", sm: "none" },
+                fontWeight: 700,
+                height: 20,
+                fontSize: "0.68rem",
+                "& .MuiChip-label": { px: 1 },
+              }}
+            />
           </Box>
           <Box sx={{ fontSize: { xs: "1.25rem", md: "1.5rem" }, fontWeight: 700, color: "var(--blue-dark)", letterSpacing: "-0.02em", wordBreak: "break-word" }}>
             {application.first_name} {application.last_name}
           </Box>
           <Box sx={{ fontSize: "0.82rem", fontFamily: "monospace", color: "var(--gray-400)", mt: 0.25 }}>{application.application_number}</Box>
         </Box>
+
+        {/* Desktop desno: Chip + akcije u jednom redu. Mobile: cijela sekcija ide u novi red kao equal-flex row */}
         <Box
           sx={{
             display: "flex",
             gap: 1,
             alignItems: "center",
-            flexWrap: "wrap",
             width: { xs: "100%", sm: "auto" },
           }}
         >
-          <Chip label={statusConfig.label} color={statusConfig.color} sx={{ fontWeight: 700 }} />
+          <Chip
+            label={statusConfig.label}
+            color={statusConfig.color}
+            sx={{
+              display: { xs: "none", sm: "inline-flex" },
+              fontWeight: 700,
+            }}
+          />
           <ApplicationActions
             application={application}
             intakeSlug={application.intakes?.slug}

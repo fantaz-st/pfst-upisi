@@ -21,15 +21,21 @@ export default function ApplicationActions({ application, intakeSlug, intakeStud
     window.open(`/api/applications/${application.id}/pdf`, "_blank");
   };
 
+  const btnSx = {
+    flex: { xs: 1, sm: "unset" },
+    minWidth: 0,
+    borderRadius: "100px",
+  };
+
   return (
     <>
-      <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={handleDownloadPDF} size="small">
+      <Button variant="contained" startIcon={<PictureAsPdfIcon />} onClick={handleDownloadPDF} size="small" sx={btnSx}>
         PDF
       </Button>
-      <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)} size="small">
+      <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)} size="small" sx={btnSx}>
         Uredi
       </Button>
-      <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteOpen(true)} size="small">
+      <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setDeleteOpen(true)} size="small" sx={btnSx}>
         Obriši
       </Button>
 
