@@ -80,6 +80,11 @@ export default function PhotoUpload({ onPhotoChange }) {
     canvas.height = OUTPUT_SIZE;
     const ctx = canvas.getContext("2d");
 
+    // Pofilati bijelim PRIJE drawImage — inače transparent pikseli (rotacija,
+    // zoom-out) postaju CRNI u JPEG-u jer JPEG ne podržava alpha channel.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
     const img = imgRef.current;
     const scaleX = img.naturalWidth / img.width;
     const scaleY = img.naturalHeight / img.height;
