@@ -84,7 +84,6 @@ export default async function HomePage() {
           <Typography variant="h2" className={styles.sectionTitle}>
             Otvorene prijave i upisi
           </Typography>
-          {/* <Typography className={styles.sectionSubtitle}>Odaberite jednu od otvorenih prijava i ispunite obrazac za upis.</Typography> */}
           <IntakeCards intakes={intakes} />
         </Container>
       </Box>
