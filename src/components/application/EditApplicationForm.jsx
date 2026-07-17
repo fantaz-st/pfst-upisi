@@ -418,13 +418,15 @@ export default function EditApplicationForm({ application, token }) {
               />
             </Box>
           ) : (
-            /* Svi dokumenti: postojeći (osim foto i combined) + obavezni iz configa, bez duplikata */
+            /* Svi dokumenti: postojeći (osim foto i combined) + obavezni + neobavezni iz configa, bez duplikata */
             [...new Set([
               ...existingDocs.filter(d => d.document_type !== "photo" && d.document_type !== "combined_documents").map(d => d.document_type),
               ...dynamicRequiredDocuments,
+              ...(config.optionalDocuments || []),
             ])].map(docType => {
               const existingDoc = existingDocs.find(d => d.document_type === docType);
-              const label = documentTypeLabels[docType] || docType;
+              const isOptional = (config.optionalDocuments || []).includes(docType) && !dynamicRequiredDocuments.includes(docType);
+              const label = (documentTypeLabels[docType] || docType) + (isOptional ? " (neobavezno)" : "");
               return (
                 <Box key={docType}>
                   {existingDoc && !uploadedFiles[docType] && (

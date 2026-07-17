@@ -714,15 +714,26 @@ export default function ApplicationForm({ intake }) {
           {combinedMode ? (
             <DocumentUpload documentType="combined_documents" label="Svi dokumenti (jedna datoteka)" required onFileChange={setCombinedFile} />
           ) : (
-            dynamicRequiredDocuments.map((docType) => (
-              <DocumentUpload
-                key={docType}
-                documentType={docType}
-                label={documentTypeLabels[docType]}
-                required
-                onFileChange={(file) => setUploadedFiles((prev) => ({ ...prev, [docType]: file }))}
-              />
-            ))
+            <>
+              {dynamicRequiredDocuments.map((docType) => (
+                <DocumentUpload
+                  key={docType}
+                  documentType={docType}
+                  label={documentTypeLabels[docType]}
+                  required
+                  onFileChange={(file) => setUploadedFiles((prev) => ({ ...prev, [docType]: file }))}
+                />
+              ))}
+              {(config.optionalDocuments || []).map((docType) => (
+                <DocumentUpload
+                  key={docType}
+                  documentType={docType}
+                  label={`${documentTypeLabels[docType]} (neobavezno)`}
+                  required={false}
+                  onFileChange={(file) => setUploadedFiles((prev) => ({ ...prev, [docType]: file }))}
+                />
+              ))}
+            </>
           )}
         </Stack>
       </Paper>

@@ -1,5 +1,6 @@
 export const documentTypeLabels = {
-  identity_card: "Osobna iskaznica",
+  identity_card: "Osobna iskaznica (prednja strana)",
+  identity_card_back: "Osobna iskaznica (stražnja strana)",
   birth_certificate: "Rodni list",
   citizenship_certificate: "Domovnica",
   previous_education_certificate: "Svjedodžba / diploma prethodnog obrazovanja",
@@ -23,6 +24,9 @@ export const applicationConfigs = {
       // redoviti s enrollment_type 2/3/4)
       // occupational_medicine_certificate dodaje se uvjetno (svi programi osim pm)
     ],
+    optionalDocuments: [
+      "identity_card_back",
+    ],
   },
   diplomski: {
     title: "Prijava za diplomski studij",
@@ -32,6 +36,9 @@ export const applicationConfigs = {
       // "previous_education_certificate",
       // "grade_transcript",
       // "payment_confirmation",
+    ],
+    optionalDocuments: [
+      "identity_card_back",
     ],
   },
 };

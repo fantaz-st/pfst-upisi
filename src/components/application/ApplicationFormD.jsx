@@ -24,7 +24,7 @@ import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
 import HomeIcon from "@mui/icons-material/Home";
 import FolderIcon from "@mui/icons-material/Folder";
-import { studyPrograms, studyTypes, documentTypeLabels, getDiplomskiPreviousStudyOptions, getDiplomskiRequiredDocuments } from "@/lib/applications/config";
+import { studyPrograms, studyTypes, documentTypeLabels, getDiplomskiPreviousStudyOptions, getDiplomskiRequiredDocuments, applicationConfigs } from "@/lib/applications/config";
 import { submitApplicationD, attachDocumentsMeta } from "@/lib/applications/actions";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import DocumentUpload from "@/components/application/DocumentUpload";
@@ -353,6 +353,15 @@ export default function ApplicationFormD({ intake }) {
                   documentType={docType}
                   label={documentTypeLabels[docType] || docType}
                   required
+                  onFileChange={file => setUploadedFiles(prev => ({ ...prev, [docType]: file }))}
+                />
+              ))}
+              {(applicationConfigs.diplomski.optionalDocuments || []).map(docType => (
+                <DocumentUpload
+                  key={docType}
+                  documentType={docType}
+                  label={`${documentTypeLabels[docType] || docType} (neobavezno)`}
+                  required={false}
                   onFileChange={file => setUploadedFiles(prev => ({ ...prev, [docType]: file }))}
                 />
               ))}
