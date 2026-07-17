@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -10,6 +10,8 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
+import OutlinedInput from "@mui/material/OutlinedInput";
+import ListItemText from "@mui/material/ListItemText";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
@@ -60,7 +62,36 @@ export default function ApplicationsTable({
   const pathname = usePathname();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [programFilter, setProgramFilter] = useState("");
+  // Multi-select filter po studiju. Prazan array = svi studiji.
+  // Perzistira se u localStorage po path-u da svaki listing pogled ima svoj filter.
+  const programFilterStorageKey = `pfst.programFilter:${pathname}`;
+  const [programFilter, setProgramFilter] = useState([]);
+  const [programFilterHydrated, setProgramFilterHydrated] = useState(false);
+
+  // Load iz localStorage jednom nakon mount-a (klijent-only)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(programFilterStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setProgramFilter(parsed);
+      }
+    } catch {
+      // ignore corrupted storage
+    }
+    setProgramFilterHydrated(true);
+  }, [programFilterStorageKey]);
+
+  // Spremi kad se promijeni (samo nakon hydration da ne pišemo prazan prvi render)
+  useEffect(() => {
+    if (!programFilterHydrated) return;
+    try {
+      if (programFilter.length === 0) localStorage.removeItem(programFilterStorageKey);
+      else localStorage.setItem(programFilterStorageKey, JSON.stringify(programFilter));
+    } catch {
+      // storage full or blocked — ignore
+    }
+  }, [programFilter, programFilterHydrated, programFilterStorageKey]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState(null);
@@ -73,8 +104,9 @@ export default function ApplicationsTable({
   const [selectedUpisIntakeId, setSelectedUpisIntakeId] = useState("");
   const [bulkEnrollmentModal, setBulkEnrollmentModal] = useState(false);
 
-  // Dohvati upis_d intakee jednom
-  useState(() => {
+  // Dohvati upis_d intakee jednom (za Bulk enrollment link)
+  useEffect(() => {
+    let cancelled = false;
     const supabase = createClient();
     supabase
       .from("intakes")
@@ -82,10 +114,14 @@ export default function ApplicationsTable({
       .eq("form_type", "upis_d")
       .eq("is_visible", true)
       .then(({ data }) => {
+        if (cancelled) return;
         setUpisIntakes(data || []);
         if (data?.length === 1) setSelectedUpisIntakeId(data[0].id);
       });
-  });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Bulk status promjena (active mode)
   const [bulkStatusModal, setBulkStatusModal] = useState(false);
@@ -102,7 +138,7 @@ export default function ApplicationsTable({
     const q = search.toLowerCase().trim();
     return applications.filter((app) => {
       if (statusFilter && app.status !== statusFilter) return false;
-      if (programFilter && app.program !== programFilter) return false;
+      if (programFilter.length > 0 && !programFilter.includes(app.program)) return false;
       if (q) {
         const haystack = [app.first_name, app.last_name, app.oib, app.email, app.application_number].join(" ").toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -263,16 +299,48 @@ export default function ApplicationsTable({
           }}
         />
 
-        {/* Filter po studiju */}
-        <FormControl size="small" sx={{ minWidth: { xs: "48%", sm: 180 }, flex: { xs: 1, sm: "unset" } }}>
-          <InputLabel>Studij</InputLabel>
-          <Select value={programFilter} label="Studij" onChange={(e) => setProgramFilter(e.target.value)} sx={{ borderRadius: 2, background: "white" }}>
-            <MenuItem value="">Svi studiji</MenuItem>
+        {/* Filter po studiju — multi-select, perzistira se u localStorage */}
+        <FormControl size="small" sx={{ minWidth: { xs: "48%", sm: 220 }, maxWidth: { sm: 340 }, flex: { xs: 1, sm: "unset" } }}>
+          <InputLabel shrink>Studij</InputLabel>
+          <Select
+            multiple
+            value={programFilter}
+            onChange={(e) => setProgramFilter(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value)}
+            input={<OutlinedInput notched label="Studij" />}
+            displayEmpty
+            renderValue={(selected) => {
+              if (!selected || selected.length === 0) {
+                return <span style={{ color: "var(--gray-400)" }}>Svi studiji</span>;
+              }
+              return (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                  {selected.map((v) => {
+                    const p = allPrograms.find((x) => x.value === v);
+                    return <Chip key={v} label={p ? p.label : v} size="small" sx={{ height: 22, fontSize: "0.72rem", background: "var(--blue-pale)", color: "var(--blue-dark)" }} />;
+                  })}
+                </Box>
+              );
+            }}
+            sx={{ borderRadius: 2, background: "white" }}
+            MenuProps={{ slotProps: { paper: { sx: { maxHeight: 320 } } } }}
+          >
             {allPrograms.map((p) => (
               <MenuItem key={p.value} value={p.value}>
-                {p.label}
+                <Checkbox size="small" checked={programFilter.includes(p.value)} />
+                <ListItemText primary={p.label} />
               </MenuItem>
             ))}
+            {programFilter.length > 0 && (
+              <MenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setProgramFilter([]);
+                }}
+                sx={{ color: "error.main", borderTop: "1px solid var(--gray-100)", mt: 0.5 }}
+              >
+                Očisti odabir
+              </MenuItem>
+            )}
           </Select>
         </FormControl>
 
@@ -441,7 +509,7 @@ export default function ApplicationsTable({
               {!filtered.length ? (
                 <TableRow>
                   <TableCell colSpan={12} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                    {search || statusFilter || programFilter ? "Nema rezultata za odabrane filtere." : "Nema prijava."}
+                    {search || statusFilter || programFilter.length > 0 ? "Nema rezultata za odabrane filtere." : "Nema prijava."}
                   </TableCell>
                 </TableRow>
               ) : (
