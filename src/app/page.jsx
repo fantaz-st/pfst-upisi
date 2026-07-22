@@ -154,8 +154,8 @@ export default async function HomePage() {
                     upisi@pfst.hr
                   </a>{" "}
                   ili na{" "}
-                  <a href="tel:+38521380762" className={styles.contactLink}>
-                    +385 21 380 762
+                  <a href="tel:+38521619490" className={styles.contactLink}>
+                    +385 21 619 490
                   </a>
                 </div>
               </Box>
