@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import Container from "@mui/material/Container";
 import Image from "next/image";
@@ -9,7 +9,7 @@ import styles from "./page.module.css";
 
 export default async function EditApplicationPage({ params }) {
   const { token } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")

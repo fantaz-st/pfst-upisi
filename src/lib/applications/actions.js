@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateApplicationNumber } from "./applicationNumber";
 import { fullApplicationSchema, personalInfoSchema } from "./validation";
 import { sendEmail } from "@/lib/email/send";
@@ -9,7 +10,7 @@ import { getProgramLabel, applicationStatuses, isCandidateLocked } from "@/lib/a
 import { revalidatePath } from "next/cache";
 
 export async function submitApplication(formData, slug, force = false, options = {}) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: intake, error: intakeError } = await supabase
     .from("intakes")
@@ -219,7 +220,7 @@ export async function submitApplication(formData, slug, force = false, options =
 }
 
 export async function uploadDocuments(applicationId, files) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const results = [];
 
   for (const { documentType, file } of files) {
@@ -291,7 +292,7 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
-      const { data: tokenData } = await supabase
+      const { data: tokenData } = await createAdminClient()
         .from("application_edit_tokens")
         .insert({
           application_id: applicationId,
@@ -352,7 +353,7 @@ export async function updateApplicationStatus(applicationId, newStatus, adminMes
 }
 
 export async function updateApplicationViaToken(token, data) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")
@@ -459,7 +460,7 @@ export async function softDeleteApplication(applicationId) {
 }
 
 export async function checkApplicationStatus(applicationNumber, oib) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("applications")
     .select("application_number, status, program, study_type, created_at, intakes ( study_level )")
@@ -474,7 +475,7 @@ export async function checkApplicationStatus(applicationNumber, oib) {
 }
 
 export async function submitApplicationD(formData, slug, filesToUpload = [], options = {}) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Dohvati intake
   const { data: intake, error: intakeError } = await supabase
@@ -618,7 +619,7 @@ export async function bulkSoftDeleteApplications(applicationIds) {
 }
 
 export async function uploadDocumentsViaToken(token, files) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Validiraj token (isti pattern kao updateApplicationViaToken)
   const { data: tokenData } = await supabase.from("application_edit_tokens").select("expires_at, applications ( id )").eq("token", token).single();
@@ -655,7 +656,7 @@ export async function uploadDocumentsViaToken(token, files) {
  * - Ne otkrivamo email adresu u response-u (vraća generic success).
  */
 export async function requestEditLinkForExisting(applicationId) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: application } = await supabase
     .from("applications")
@@ -728,7 +729,7 @@ export async function requestEditLinkForExisting(applicationId) {
  * docs: [{ documentType, filePath, fileName, mimeType, sizeBytes }]
  */
 export async function attachDocumentsMeta(applicationId, docs) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   if (!Array.isArray(docs) || docs.length === 0) return { success: true, inserted: 0 };
 
   // Ako se ponovno prilaže "photo", makni postojeći red da ne akumuliramo duplikate

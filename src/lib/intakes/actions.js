@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 export async function toggleIntakeOpen(id, value) {
@@ -134,7 +135,7 @@ export async function deleteIntake(id) {
 }
 
 export async function getElectiveCourses(intakeId) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("elective_courses")
     .select("*")
@@ -146,7 +147,7 @@ export async function getElectiveCourses(intakeId) {
 }
 
 export async function getElectiveRequirements(intakeId) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("elective_requirements")
     .select("*")
