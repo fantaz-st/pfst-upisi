@@ -109,14 +109,21 @@ export async function createEnrollmentToken(applicationId, enrollmentIntakeId) {
 
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(); // 14 dana
 
-  const { data: existing } = await supabase.from("enrollments").select("id, token").eq("application_id", applicationId).maybeSingle();
+  const { data: existing } = await supabase.from("enrollments").select("id, token, status").eq("application_id", applicationId).maybeSingle();
 
   let token;
   if (existing) {
-    // Obnovi token
+    // Obnovi token — produljuje rok, ali ne dira status/token_used_at ako je
+    // kandidat već predao upis (submitted/confirmed/rejected). Ponovno otvaranje
+    // predanog upisa ide isključivo kroz revertEnrollmentToPending — eksplicitnu
+    // akciju referade, ne kao nuspojava ponovnog slanja istog linka.
+    const updateData = { token_expires_at: expiresAt };
+    if (existing.status === "pending") {
+      updateData.token_used_at = null;
+    }
     const { data, error } = await supabase
       .from("enrollments")
-      .update({ token_expires_at: expiresAt, token_used_at: null, status: "pending" })
+      .update(updateData)
       .eq("id", existing.id)
       .select("token")
       .single();
@@ -204,6 +211,48 @@ export async function bulkConfirmEnrollments(enrollmentIds) {
   if (error) return { error: error.message };
   revalidatePath("/admin/upisi-diplomski");
   return { success: true, count: enrollmentIds.length };
+}
+
+export async function confirmEnrollment(enrollmentId) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("enrollments")
+    .update({ status: "confirmed" })
+    .eq("id", enrollmentId)
+    .eq("status", "submitted"); // samo submitani upis možemo potvrditi
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath(`/admin/upis/${enrollmentId}`);
+  return { success: true };
+}
+
+export async function rejectEnrollment(enrollmentId) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("enrollments").update({ status: "rejected" }).eq("id", enrollmentId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath(`/admin/upis/${enrollmentId}`);
+  return { success: true };
+}
+
+export async function revertEnrollmentToPending(enrollmentId) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("enrollments").update({ status: "pending" }).eq("id", enrollmentId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath(`/admin/upis/${enrollmentId}`);
+  return { success: true };
+}
+
+export async function addEnrollmentNote(enrollmentId, note, adminId) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("enrollment_notes").insert({
+    enrollment_id: enrollmentId,
+    note,
+    admin_id: adminId,
+  });
+  if (error) return { error: error.message };
+  return { success: true };
 }
 
 export async function deleteEnrollment(enrollmentId) {

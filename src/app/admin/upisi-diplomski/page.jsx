@@ -17,12 +17,6 @@ import styles from "../admin.module.css";
 
 export const metadata = { title: "Upisi diplomski — Admin" };
 
-const enrollmentStatusConfig = {
-  pending:   { label: "Čeka upis",   color: "warning" },
-  submitted: { label: "Upisano",     color: "success" },
-  confirmed: { label: "Potvrđeno",   color: "info" },
-};
-
 export default async function UpisIDiplomskiPage() {
   const supabase = await createClient();
 

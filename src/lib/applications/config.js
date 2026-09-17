@@ -58,6 +58,13 @@ export const statusesWithMessage = ["needs_update"];
 // Statuses where email is sent to candidate (no message)
 export const statusesWithEmail = ["accepted", "rejected"];
 
+export const enrollmentStatuses = {
+  pending: { label: "Čeka upis", color: "warning" },
+  submitted: { label: "Upisano", color: "success" },
+  confirmed: { label: "Potvrđeno", color: "info" },
+  rejected: { label: "Odbijeno", color: "default" },
+};
+
 // Prijava je "zaključana" za pristupnika kad je referada preuzela obradu —
 // pristupnik više ne može sam mijenjati podatke ni tražiti edit link.
 export function isCandidateLocked(status) {

@@ -18,7 +18,7 @@ import SendIcon from "@mui/icons-material/Send";
 import { createClient } from "@/lib/supabase/client";
 import { createEnrollmentToken, sendEnrollmentInvite } from "@/lib/enrollments/actions";
 
-export default function EnrollmentLinkButton({ applicationId, applicationEmail, firstName, lastName }) {
+export default function EnrollmentLinkButton({ applicationId, applicationEmail, firstName, lastName, intakeId = null, initialToken = null }) {
   const [loading, setLoading] = useState(false);
   const [enrollmentUrl, setEnrollmentUrl] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -27,7 +27,10 @@ export default function EnrollmentLinkButton({ applicationId, applicationEmail, 
   const [upisIntakes, setUpisIntakes] = useState([]);
   const [selectedIntakeId, setSelectedIntakeId] = useState("");
 
+  // Kad je intakeId zadan (npr. sa stranice upisa), intake je već poznat —
+  // ne treba birač niti dohvat liste upisa.
   useEffect(() => {
+    if (intakeId) return;
     const supabase = createClient();
     supabase
       .from("intakes")
@@ -39,13 +42,22 @@ export default function EnrollmentLinkButton({ applicationId, applicationEmail, 
         setUpisIntakes(data || []);
         if (data?.length === 1) setSelectedIntakeId(data[0].id);
       });
-  }, []);
+  }, [intakeId]);
+
+  // Postojeći token (npr. već generiran link) — pre-popuni odmah, bez
+  // prisiljavanja na klik "Generiraj" prije nego kopiranje/slanje rade.
+  useEffect(() => {
+    if (initialToken) {
+      setEnrollmentUrl(`${window.location.origin}/upis-diplomski/${initialToken}`);
+    }
+  }, [initialToken]);
 
   const handleGenerate = async () => {
-    if (!selectedIntakeId) { setError("Odaberite upis na koji se kandidat upisuje."); return; }
+    const targetIntakeId = intakeId || selectedIntakeId;
+    if (!targetIntakeId) { setError("Odaberite upis na koji se kandidat upisuje."); return; }
     setLoading(true);
     setError(null);
-    const result = await createEnrollmentToken(applicationId, selectedIntakeId);
+    const result = await createEnrollmentToken(applicationId, targetIntakeId);
     if (result.error) {
       setError(result.error);
     } else {
@@ -75,7 +87,7 @@ export default function EnrollmentLinkButton({ applicationId, applicationEmail, 
 
       {!enrollmentUrl ? (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          {upisIntakes.length > 1 && (
+          {!intakeId && upisIntakes.length > 1 && (
             <FormControl fullWidth size="small">
               <InputLabel>Upis na diplomski</InputLabel>
               <Select value={selectedIntakeId} label="Upis na diplomski" onChange={e => setSelectedIntakeId(e.target.value)}>
@@ -85,7 +97,7 @@ export default function EnrollmentLinkButton({ applicationId, applicationEmail, 
               </Select>
             </FormControl>
           )}
-          {upisIntakes.length === 0 && (
+          {!intakeId && upisIntakes.length === 0 && (
             <Alert severity="warning" sx={{ fontSize: "0.8rem" }}>
               Nema kreiranog "Upis (diplomski)" intakea. Kreirajte ga u Upravljanje upisima.
             </Alert>
@@ -95,7 +107,7 @@ export default function EnrollmentLinkButton({ applicationId, applicationEmail, 
             color="success"
             startIcon={loading ? <CircularProgress size={16} /> : <LinkIcon />}
             onClick={handleGenerate}
-            disabled={loading || !selectedIntakeId}
+            disabled={loading || (!intakeId && !selectedIntakeId)}
             fullWidth
             sx={{ borderRadius: "100px" }}
           >

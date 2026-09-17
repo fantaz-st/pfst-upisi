@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Font } from "@react-pdf/renderer";
 import { join } from "path";
+import { documentTypeLabels, getDiplomskiPreviousStudyOptions } from "@/lib/applications/config";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Roboto", backgroundColor: "#FFFFFF" },
@@ -129,6 +130,10 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
     ],
   });
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString("hr-HR") : "—");
+
+  if (application.intakes?.form_type === "prijava_d") {
+    return <PrijavaDDocument application={application} programLabel={programLabel} studyTypeLabel={studyTypeLabel} formatDate={formatDate} />;
+  }
 
   return (
     <Document>
@@ -276,6 +281,97 @@ export default function ApplicationPDF({ application, programLabel, studyTypeLab
           <View style={{ alignItems: "flex-end" }}>
             <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Sveučilište u Splitu · Pomorski fakultet</Text>
             <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Datum upisa: {formatDate(new Date().toISOString())}</Text>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+function PrijavaDDocument({ application, programLabel, studyTypeLabel, formatDate }) {
+  const intake = application.intakes;
+  const previousStudyLabel = getDiplomskiPreviousStudyOptions(intake).find((o) => o.value === application.previous_study_institution)?.label;
+  const documents = application.application_documents ?? [];
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.facultyName}>Sveučilište u Splitu, Pomorski fakultet</Text>
+          <Text style={styles.documentTitle}>Prijava za diplomski studij</Text>
+        </View>
+
+        {/* Podaci o studiju */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PODACI O STUDIJU</Text>
+          <DataRow label="Studij" value={programLabel} bold />
+          <DataRow label="Vrsta studiranja" value={studyTypeLabel} />
+          <DataRow label="Vrsta upisa" value={intake?.title} />
+          <DataRow label="Akademska godina" value={intake?.academic_year} />
+          <DataRow label="Prethodni prijediplomski studij" value={previousStudyLabel} />
+          <DataRow label="Godina završetka" value={application.previous_completion_year} />
+        </View>
+
+        {/* Osobni podaci */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>OSOBNI PODACI</Text>
+          <View style={styles.twoCol}>
+            <View style={styles.colHalf}>
+              <DataRow label="Ime i prezime" value={`${application.first_name} ${application.last_name}`} bold />
+              <DataRow label="OIB" value={application.oib} />
+              <DataRow label="Datum rođenja" value={formatDate(application.birth_date)} />
+              <DataRow label="Državljanstvo" value={application.citizenship} />
+            </View>
+            <View style={styles.colHalf}>
+              <DataRow label="Email" value={application.email} />
+              <DataRow label="Mobitel" value={application.phone} />
+              <DataRow label="Adresa" value={`${application.address || ""}, ${application.postal_code || ""} ${application.city || ""}`.trim()} />
+            </View>
+          </View>
+        </View>
+
+        {/* Roditelji */}
+        {application.father_name && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>PODACI O RODITELJIMA</Text>
+            <DataRow label="Ime oca" value={application.father_name} />
+          </View>
+        )}
+
+        {/* Dokumenti */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>DOKUMENTI</Text>
+          {documents.length === 0 ? (
+            <Text style={{ fontSize: 8, color: "#64748b" }}>Nema priloženih dokumenata.</Text>
+          ) : (
+            documents.map((doc) => <DataRow key={doc.id} label={documentTypeLabels[doc.document_type] ?? doc.document_type} value={doc.file_name} />)
+          )}
+        </View>
+
+        {/* Privola */}
+        <View style={{ marginBottom: 10 }}>
+          <Text style={styles.sectionTitle}>PRIVOLA</Text>
+          <Text style={{ fontSize: 7, lineHeight: 1.35, color: "#0f172a", marginBottom: 4 }}>
+            Na temelju točke 32. Opće uredbe o zaštiti podataka, EC 2016/679 i odredbi Zakona o provedbi Opće uredbe o zaštiti osobnih podataka ("Narodne novine" broj 42/18),
+            svojim potpisom dajem <Text style={{ fontWeight: 700 }}>PRIVOLU</Text> Pomorskom fakultetu u Splitu da u svrhu ostvarivanja mojih prava iz studentskog standarda i
+            službene komunikacije tijekom studiranja koristi moje osobne podatke.
+          </Text>
+          <Text style={{ fontSize: 7, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>Napomena:</Text>
+          <Text style={{ fontSize: 7, lineHeight: 1.35, color: "#64748b" }}>
+            Navedeni osobni podaci koristit će se isključivo u gore navedenu svrhu u skladu s odredbama Opće uredbe o zaštiti podataka EC 2016/679, te se u druge svrhe ne smiju
+            koristiti bez pisane privole osobe na koju se odnose. Daljnja obrada osobnih podataka u povijesne, statističke ili znanstvene svrhe neće se smatrati nepodudarnom, pod
+            uvjetom da se poduzmu odgovarajuće zaštitne mjere. Student ima pravo u svako doba odustati od dane privole i zatražiti prestanak daljnje obrade, na način da ispuni za
+            to propisani obrazac te ga dostavi voditelju obrade osobnih podataka.
+          </Text>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View />
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Sveučilište u Splitu · Pomorski fakultet</Text>
+            <Text style={{ fontSize: 8, fontWeight: 700, color: "#0f385c" }}>Datum ispisa: {formatDate(new Date().toISOString())}</Text>
           </View>
         </View>
       </Page>

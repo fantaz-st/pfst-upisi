@@ -23,15 +23,9 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Typography from "@mui/material/Typography";
-import { getProgramShortCode } from "@/lib/applications/config";
+import { getProgramShortCode, enrollmentStatuses } from "@/lib/applications/config";
 import { bulkConfirmEnrollments, deleteEnrollment } from "@/lib/enrollments/actions";
 import styles from "@/app/admin/admin.module.css";
-
-const statusConfig = {
-  pending: { label: "Čeka upis", color: "warning" },
-  submitted: { label: "Upisano", color: "success" },
-  confirmed: { label: "Potvrđeno", color: "info" },
-};
 
 export default function EnrollmentsTable({ enrollments = [], showIntake = false }) {
   const router = useRouter();
@@ -138,7 +132,7 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false 
             <TableBody>
               {enrollments.map((e, i) => {
                 const app = e.applications;
-                const cfg = statusConfig[e.status] ?? { label: e.status, color: "default" };
+                const cfg = enrollmentStatuses[e.status] ?? { label: e.status, color: "default" };
                 const isExpired = e.token_expires_at && new Date(e.token_expires_at) < new Date() && !e.token_used_at;
                 const isSelectable = e.status === "submitted";
                 const isSelected = selected.includes(e.id);

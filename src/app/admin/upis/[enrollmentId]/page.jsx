@@ -8,16 +8,14 @@ import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { getProgramLabel, studyTypes, enrollmentTypeOptions } from "@/lib/applications/config";
+import { getProgramLabel, studyTypes, enrollmentTypeOptions, enrollmentStatuses } from "@/lib/applications/config";
 import ApplicantPhoto from "@/components/admin/ApplicantPhoto";
+import EnrollmentStatusControl from "@/components/admin/EnrollmentStatusControl";
+import EnrollmentLinkButton from "@/components/admin/EnrollmentLinkButton";
+import EnrollmentNotes from "@/components/admin/EnrollmentNotes";
+import EnrollmentDeleteButton from "@/components/admin/EnrollmentDeleteButton";
 import { canAccessIntake } from "@/lib/admin/permissions";
 import styles from "../../admin.module.css";
-
-const statusConfig = {
-  pending: { label: "Čeka upis", color: "warning" },
-  submitted: { label: "Upisano", color: "success" },
-  confirmed: { label: "Potvrđeno", color: "info" },
-};
 
 export default async function EnrollmentDetailPage({ params }) {
   const { enrollmentId } = await params;
@@ -28,7 +26,8 @@ export default async function EnrollmentDetailPage({ params }) {
     .select(
       `*,
       applications ( id, first_name, last_name, email, phone, oib, application_number, program, study_type, application_documents ( * ) ),
-      intakes ( id, title, academic_year, slug, form_type )`,
+      intakes ( id, title, academic_year, slug, form_type ),
+      enrollment_notes ( * )`,
     )
     .eq("id", enrollmentId)
     .single();
@@ -38,11 +37,15 @@ export default async function EnrollmentDetailPage({ params }) {
   const hasAccess = await canAccessIntake(enrollment.intake_id);
   if (!hasAccess) redirect("/admin/sve-prijave");
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const application = enrollment.applications;
   const intake = enrollment.intakes;
   const backHref = intake?.id ? `/admin/intake/${intake.id}` : "/admin/pocetna";
 
-  const statusInfo = statusConfig[enrollment.status] ?? { label: enrollment.status, color: "default" };
+  const statusInfo = enrollmentStatuses[enrollment.status] ?? { label: enrollment.status, color: "default" };
   const isExpired = enrollment.token_expires_at && new Date(enrollment.token_expires_at) < new Date() && !enrollment.token_used_at;
   const programLabel = getProgramLabel(application?.program);
   const studyTypeLabel = studyTypes.find((t) => t.value === application?.study_type)?.label || application?.study_type;
@@ -200,12 +203,39 @@ export default async function EnrollmentDetailPage({ params }) {
         {/* Right */}
         <Grid size={{ xs: 12, md: 4 }}>
           <div className={styles.sectionPaper}>
+            <div className={styles.sectionTitle}>Promjena statusa</div>
+            <EnrollmentStatusControl enrollmentId={enrollment.id} currentStatus={enrollment.status} />
+          </div>
+
+          <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Status upisa</div>
             <InfoRow label="Status" value={isExpired ? "Isteklo" : statusInfo.label} />
             <InfoRow label="Poslano" value={enrollment.submitted_at ? new Date(enrollment.submitted_at).toLocaleString("hr-HR") : null} />
             <InfoRow label="Link istječe" value={enrollment.token_expires_at ? new Date(enrollment.token_expires_at).toLocaleString("hr-HR") : null} />
             <InfoRow label="Link iskorišten" value={enrollment.token_used_at ? new Date(enrollment.token_used_at).toLocaleString("hr-HR") : null} />
           </div>
+
+          <div className={styles.sectionPaper}>
+            <div className={styles.sectionTitle}>PDF</div>
+            <Button href={`/api/enrollments/${enrollment.id}/pdf`} target="_blank" variant="contained" fullWidth sx={{ borderRadius: "100px" }}>
+              Preuzmi upisni list
+            </Button>
+          </div>
+
+          <div className={styles.sectionPaper}>
+            <div className={styles.sectionTitle}>Link za upis</div>
+            {application?.id && (
+              <EnrollmentLinkButton
+                applicationId={application.id}
+                applicationEmail={application.email}
+                firstName={application.first_name}
+                lastName={application.last_name}
+                intakeId={enrollment.intake_id}
+                initialToken={enrollment.token}
+              />
+            )}
+          </div>
+
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Prijava</div>
             {application?.id ? (
@@ -215,6 +245,19 @@ export default async function EnrollmentDetailPage({ params }) {
             ) : (
               <Box sx={{ color: "text.secondary", fontSize: "0.85rem" }}>Prijava nije pronađena.</Box>
             )}
+          </div>
+
+          <div className={styles.sectionPaper}>
+            <div className={styles.sectionTitle}>Interne bilješke</div>
+            <EnrollmentNotes notes={enrollment.enrollment_notes ?? []} enrollmentId={enrollment.id} userId={user?.id} />
+          </div>
+
+          <div className={styles.sectionPaper}>
+            <EnrollmentDeleteButton
+              enrollmentId={enrollment.id}
+              candidateName={`${application?.first_name ?? ""} ${application?.last_name ?? ""}`.trim()}
+              redirectTo={backHref}
+            />
           </div>
         </Grid>
       </Grid>
