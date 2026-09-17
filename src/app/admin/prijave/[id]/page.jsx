@@ -134,7 +134,9 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Osobni podaci</div>
             <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2.5, mb: 2, alignItems: { xs: "center", sm: "flex-start" } }}>
-              <ApplicantPhoto documents={application.application_documents} firstName={application.first_name} lastName={application.last_name} />
+              {application.intakes?.form_type !== "prijava_d" && (
+                <ApplicantPhoto documents={application.application_documents} firstName={application.first_name} lastName={application.last_name} />
+              )}
               <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>
                 <InfoRow label="JMBAG" value={application.jmbag} />
                 <InfoRow label="Email" value={application.email} />

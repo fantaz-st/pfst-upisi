@@ -183,7 +183,15 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false 
                       <span className={styles.secondaryText}>{e.submitted_at ? new Date(e.submitted_at).toLocaleDateString("hr-HR") : "—"}</span>
                     </TableCell>
                     <TableCell align="right">
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1.5 }}>
+                        <Button
+                          href={`/admin/upis/${e.id}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ borderRadius: "100px", fontSize: "0.75rem" }}
+                        >
+                          Pregled
+                        </Button>
                         {app?.id && (
                           <Link href={`/admin/prijave/${app.id}`} style={{ fontSize: "0.75rem", color: "var(--blue-main)", fontWeight: 600 }}>
                             Prijava →
