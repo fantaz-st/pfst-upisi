@@ -8,6 +8,7 @@ import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import { getProgramLabel, studyTypes, enrollmentTypeOptions, enrollmentStatuses } from "@/lib/applications/config";
 import ApplicantPhoto from "@/components/admin/ApplicantPhoto";
 import EnrollmentStatusControl from "@/components/admin/EnrollmentStatusControl";
@@ -138,6 +139,16 @@ export default async function EnrollmentDetailPage({ params }) {
             color={isExpired ? "error" : statusInfo.color}
             sx={{ display: { xs: "none", sm: "inline-flex" }, fontWeight: 700 }}
           />
+          <Button
+            href={`/api/enrollments/${enrollment.id}/pdf`}
+            target="_blank"
+            variant="contained"
+            size="small"
+            startIcon={<PictureAsPdfIcon />}
+            sx={{ borderRadius: "100px", flex: { xs: 1, sm: "unset" }, minWidth: 0 }}
+          >
+            Preuzmi upisni list
+          </Button>
         </Box>
       </Box>
 
@@ -213,13 +224,6 @@ export default async function EnrollmentDetailPage({ params }) {
             <InfoRow label="Poslano" value={enrollment.submitted_at ? new Date(enrollment.submitted_at).toLocaleString("hr-HR") : null} />
             <InfoRow label="Link istječe" value={enrollment.token_expires_at ? new Date(enrollment.token_expires_at).toLocaleString("hr-HR") : null} />
             <InfoRow label="Link iskorišten" value={enrollment.token_used_at ? new Date(enrollment.token_used_at).toLocaleString("hr-HR") : null} />
-          </div>
-
-          <div className={styles.sectionPaper}>
-            <div className={styles.sectionTitle}>PDF</div>
-            <Button href={`/api/enrollments/${enrollment.id}/pdf`} target="_blank" variant="contained" fullWidth sx={{ borderRadius: "100px" }}>
-              Preuzmi upisni list
-            </Button>
           </div>
 
           <div className={styles.sectionPaper}>

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateApplicationNumber } from "./applicationNumber";
-import { fullApplicationSchema, personalInfoSchema } from "./validation";
+import { fullApplicationSchema, personalInfoSchema, diplomskiApplicationSchema } from "./validation";
 import { sendEmail } from "@/lib/email/send";
 import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno, emailUObradi } from "@/lib/email/templates";
 import { getProgramLabel, applicationStatuses, isCandidateLocked } from "@/lib/applications/config";
@@ -357,7 +357,7 @@ export async function updateApplicationViaToken(token, data) {
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")
-    .select("*, applications ( id, oib, status, email, first_name, last_name, application_number, intakes ( academic_year ) )")
+    .select("*, applications ( id, oib, status, email, first_name, last_name, application_number, intakes ( academic_year, form_type ) )")
     .eq("token", token)
     .single();
 
@@ -374,15 +374,28 @@ export async function updateApplicationViaToken(token, data) {
     return { error: "Prijava je u obradi kod referade i više se ne može uređivati." };
   }
 
-  const parsed = personalInfoSchema.safeParse(data);
+  // Validacijska shema je ujedno i whitelist stupaca koji se smiju pisati —
+  // diplomskiApplicationSchema ne poznaje polja specifična za upis_pd (fotografija,
+  // roditelji, spol, bračno stanje, izjava o upisu...), pa ih Zod tiho odbacuje bez
+  // obzira što je klijent poslao. Vidi bug gdje je prijava_d prijava kroz ovaj put
+  // dobivala EditApplicationForm (upis_pd obrazac) i te je vrijednosti upisivala.
+  const isPrijavaD = application.intakes?.form_type === "prijava_d";
+  const schema = isPrijavaD ? diplomskiApplicationSchema : personalInfoSchema;
+
+  const parsed = schema.safeParse(data);
   if (!parsed.success) {
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
+  // consent postoji u diplomskiApplicationSchema (obavezan checkbox pri prvoj
+  // prijavi) ali applications nema takav stupac — mora se izbaciti prije update-a.
+  // personalInfoSchema nikad nije imao consent, pa je ovo no-op za upis_pd granu.
+  const { consent, ...applicationFields } = parsed.data;
+
   const { error: updateError } = await supabase
     .from("applications")
     .update({
-      ...parsed.data,
+      ...applicationFields,
       oib: application.oib,
       status: "submitted",
       updated_at: new Date().toISOString(),
@@ -463,7 +476,7 @@ export async function checkApplicationStatus(applicationNumber, oib) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("applications")
-    .select("application_number, status, program, study_type, created_at, intakes ( study_level )")
+    .select("application_number, status, program, study_type, created_at, intakes ( study_level, form_type )")
     .eq("application_number", applicationNumber)
     .eq("oib", oib)
     .is("deleted_at", null)
@@ -471,7 +484,7 @@ export async function checkApplicationStatus(applicationNumber, oib) {
   if (error || !data) {
     return { error: "Prijava nije pronađena. Provjerite broj prijave i OIB." };
   }
-  return { ...data, study_level: data.intakes?.study_level };
+  return { ...data, study_level: data.intakes?.study_level, form_type: data.intakes?.form_type };
 }
 
 export async function submitApplicationD(formData, slug, filesToUpload = [], options = {}) {

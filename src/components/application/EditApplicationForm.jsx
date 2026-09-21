@@ -52,7 +52,10 @@ export default function EditApplicationForm({ application, token }) {
 
   const existingDocs = application.application_documents || [];
   const existingPhoto = existingDocs.find(d => d.document_type === "photo");
-  const config = applicationConfigs[application.intakes?.study_level]
+  // Ovaj obrazac se sada renderira isključivo za upis_pd (prijava_d ide kroz
+  // EditApplicationFormD) — study_level je deprecated, form_type je pouzdan izvor.
+  const configKey = application.intakes?.form_type === "upis_pd" ? "prijediplomski" : "diplomski";
+  const config = applicationConfigs[configKey]
     ?? applicationConfigs[application.intakes?.slug]
     ?? { requiredDocuments: [] };
 

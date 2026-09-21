@@ -113,15 +113,6 @@ export default function EnrollmentPDF({ enrollment, programLabel, studyTypeLabel
           <Text style={styles.documentTitle}>Upisni list - diplomski studij</Text>
         </View>
 
-        {/* Podaci o studiju */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PODACI O STUDIJU</Text>
-          <DataRow label="Studij" value={programLabel} bold />
-          <DataRow label="Vrsta studiranja" value={studyTypeLabel} />
-          <DataRow label="Vrsta upisa" value={intake?.title} />
-          <DataRow label="Akademska godina" value={intake?.academic_year} />
-        </View>
-
         {/* Osobni podaci */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>OSOBNI PODACI UPISA</Text>
@@ -151,6 +142,15 @@ export default function EnrollmentPDF({ enrollment, programLabel, studyTypeLabel
               <DataRow label="Izjava o upisu" value={enrollmentTypeLabel} />
             </View>
           </View>
+        </View>
+
+        {/* Podaci o studiju */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PODACI O STUDIJU</Text>
+          <DataRow label="Studij" value={programLabel} bold />
+          <DataRow label="Vrsta studiranja" value={studyTypeLabel} />
+          <DataRow label="Vrsta upisa" value={intake?.title} />
+          <DataRow label="Akademska godina" value={intake?.academic_year} />
         </View>
 
         {/* Roditelji */}

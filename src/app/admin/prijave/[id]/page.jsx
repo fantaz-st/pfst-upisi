@@ -8,7 +8,7 @@ import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Typography from "@mui/material/Typography";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { applicationStatuses, getProgramLabel, studyTypes, enrollmentTypeOptions } from "@/lib/applications/config";
+import { getApplicationStatusConfig, getProgramLabel, studyTypes, enrollmentTypeOptions } from "@/lib/applications/config";
 import ApplicationStatusControl from "@/components/admin/ApplicationStatusControl";
 import EnrollmentLinkButton from "@/components/admin/EnrollmentLinkButton";
 import ApplicationNotes from "@/components/admin/ApplicationNotes";
@@ -31,6 +31,18 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
 
   if (error || !application) notFound();
 
+  // Enrollment (upis_d) za ovu prijavu — postoji samo za prijava_d nakon što je
+  // referada generirala link. Jedan dodatni upit, samo za prijava_d.
+  let enrollment = null;
+  if (application.intakes?.form_type === "prijava_d") {
+    const { data: enrollmentData } = await supabase
+      .from("enrollments")
+      .select("token, token_expires_at, token_used_at, sent_at, intake_id, status")
+      .eq("application_id", application.id)
+      .maybeSingle();
+    enrollment = enrollmentData;
+  }
+
   // Kanonski povratni URL — koristi ?from= ako je zadan, inače deriviraj iz
   // intake.form_type (per-intake pogled je najprirodniji fallback).
   const canonicalBack =
@@ -43,7 +55,7 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const statusConfig = applicationStatuses[application.status] ?? { label: application.status, color: "default" };
+  const statusConfig = getApplicationStatusConfig(application.status, application.intakes?.form_type, !!enrollment?.sent_at);
   const programLabel = getProgramLabel(application.program);
   const studyTypeLabel = studyTypes.find((t) => t.value === application.study_type)?.label || application.study_type;
   const otherDocs = application.application_documents?.filter((d) => d.document_type !== "photo") ?? [];
@@ -213,15 +225,20 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
               applicationFirstName={application.first_name}
               applicationLastName={application.last_name}
               studyLevel={application.intakes?.study_level}
-              enrollmentIntakeId={application.intakes?.id}
+              formType={application.intakes?.form_type}
             />
-            {application.intakes?.form_type === "prijava_d" && application.status === "accepted" && (
+            {application.intakes?.form_type === "prijava_d" && (application.status === "accepted" || enrollment) && (
               <EnrollmentLinkButton
                 applicationId={application.id}
-                intakeId={application.intakes?.id}
+                intakeId={enrollment?.intake_id}
+                academicYear={application.intakes?.academic_year}
                 applicationEmail={application.email}
                 firstName={application.first_name}
                 lastName={application.last_name}
+                initialToken={enrollment?.token}
+                initialTokenExpiresAt={enrollment?.token_expires_at}
+                initialTokenUsedAt={enrollment?.token_used_at}
+                initialSentAt={enrollment?.sent_at}
               />
             )}
           </div>

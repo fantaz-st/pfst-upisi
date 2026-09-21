@@ -11,10 +11,10 @@ import TextField from "@mui/material/TextField";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
-import { applicationStatuses, statusesWithMessage } from "@/lib/applications/config";
+import { getApplicationStatusEntries, statusesWithMessage } from "@/lib/applications/config";
 import { updateApplicationStatus, updateApplication } from "@/lib/applications/actions";
 
-export default function ApplicationStatusControl({ applicationId, currentStatus, currentJmbag, applicationEmail, applicationFirstName, applicationLastName, studyLevel, enrollmentIntakeId }) {
+export default function ApplicationStatusControl({ applicationId, currentStatus, currentJmbag, applicationEmail, applicationFirstName, applicationLastName, studyLevel, formType }) {
   const [loading, setLoading] = useState(null);
   const [messageModal, setMessageModal] = useState(false);
   const [jmbagModal, setJmbagModal] = useState(false);
@@ -24,7 +24,7 @@ export default function ApplicationStatusControl({ applicationId, currentStatus,
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const statuses = Object.entries(applicationStatuses).filter(([key]) => key !== currentStatus && key !== "submitted");
+  const statuses = getApplicationStatusEntries(formType).filter(([key]) => key !== currentStatus && key !== "submitted");
 
   const handleStatusClick = (statusKey) => {
     setError(null);

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { applicationStatuses, getProgramLabel, studyTypes } from "@/lib/applications/config";
+import { getApplicationStatusConfig, getProgramLabel, studyTypes } from "@/lib/applications/config";
 import "./print.css";
 
 export default async function ApplicationPrintPage({ params }) {
@@ -11,14 +11,14 @@ export default async function ApplicationPrintPage({ params }) {
     .from("applications")
     .select(`
       *,
-      intakes ( title, academic_year, slug )
+      intakes ( title, academic_year, slug, form_type )
     `)
     .eq("id", id)
     .single();
 
   if (error || !application) notFound();
 
-  const statusConfig = applicationStatuses[application.status] ?? { label: application.status };
+  const statusConfig = getApplicationStatusConfig(application.status, application.intakes?.form_type);
   const programLabel = getProgramLabel(application.program);
   const studyTypeLabel = studyTypes.find(t => t.value === application.study_type)?.label || application.study_type;
 

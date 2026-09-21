@@ -33,9 +33,10 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false 
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // enrollment id za brisanje
 
-  // Sve se može selektirati (za brisanje); potvrda vrijedi samo za submitted
+  // Referada odlučuje iz kojeg statusa potvrđuje — bez ograničenja na "submitted",
+  // isto kao pojedinačna kontrola statusa (EnrollmentStatusControl).
   const selectableIds = useMemo(() => enrollments.map((e) => e.id), [enrollments]);
-  const confirmableSelected = useMemo(() => selected.filter((id) => enrollments.find((e) => e.id === id)?.status === "submitted"), [selected, enrollments]);
+  const confirmableSelected = selected;
   const allSelected = selectableIds.length > 0 && selected.length === selectableIds.length;
   const someSelected = selected.length > 0;
 
@@ -134,13 +135,12 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false 
                 const app = e.applications;
                 const cfg = enrollmentStatuses[e.status] ?? { label: e.status, color: "default" };
                 const isExpired = e.token_expires_at && new Date(e.token_expires_at) < new Date() && !e.token_used_at;
-                const isSelectable = e.status === "submitted";
                 const isSelected = selected.includes(e.id);
 
                 return (
                   <TableRow key={e.id} hover selected={isSelected} sx={{ "&:last-child td": { border: 0 } }}>
                     <TableCell padding="checkbox">
-                      <Checkbox size="small" checked={isSelected} onChange={() => toggle(e.id)} disabled={!isSelectable} />
+                      <Checkbox size="small" checked={isSelected} onChange={() => toggle(e.id)} />
                     </TableCell>
                     <TableCell sx={{ color: "text.disabled", fontWeight: 600, fontSize: "0.8rem" }}>{i + 1}</TableCell>
                     <TableCell>

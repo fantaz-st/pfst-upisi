@@ -12,15 +12,15 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
-import { applicationStatuses, getProgramShortCode } from "@/lib/applications/config";
+import { getApplicationStatusConfig, getProgramShortCode } from "@/lib/applications/config";
 import ApplicationFilters from "@/components/admin/ApplicationFilters";
 
 export const metadata = {
   title: "Sve prijave — Admin",
 };
 
-function StatusChip({ status }) {
-  const config = applicationStatuses[status] ?? { label: status, color: "default" };
+function StatusChip({ status, formType }) {
+  const config = getApplicationStatusConfig(status, formType);
   return <Chip label={config.label} color={config.color} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: "0.72rem" }} />;
 }
 
@@ -39,7 +39,7 @@ export default async function AllApplicationsPage({ searchParams }) {
     .select(
       `
       id, intake_id, application_number, first_name, last_name, email, oib, status, created_at, program, study_type,
-      intakes ( title, academic_year, slug, study_level )
+      intakes ( title, academic_year, slug, study_level, form_type )
     `,
     )
     .is("deleted_at", null)
@@ -150,7 +150,7 @@ export default async function AllApplicationsPage({ searchParams }) {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <StatusChip status={app.status} />
+                    <StatusChip status={app.status} formType={app.intakes?.form_type} />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">

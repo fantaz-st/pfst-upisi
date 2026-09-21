@@ -5,6 +5,10 @@ export async function getVisibleIntakes() {
   const { data, error } = await supabase
     .from("intakes")
     .select("*")
+    // upis_d je token-only (magic link) — nikad se ne prikazuje na javnoj
+    // početnoj stranici, bez obzira na is_visible. Njegova kartica bi vodila
+    // na /upis-diplomski, koji bez tokena vraća 404.
+    .neq("form_type", "upis_d")
     .eq("is_visible", true)
     .order("sort_order", { ascending: true });
 
@@ -19,6 +23,9 @@ export async function getIntakeBySlug(slug) {
     .select("*")
     .eq("slug", slug)
     .eq("is_visible", true)
+    // Isti razlog kao getVisibleIntakes — upis_d nema slug-baziranu javnu
+    // stranicu (samo /upis-diplomski/[token]), pa se ovdje ne smije razriješiti.
+    .neq("form_type", "upis_d")
     .single();
 
   if (error) return null;

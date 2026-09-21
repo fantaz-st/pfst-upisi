@@ -52,6 +52,49 @@ export const applicationStatuses = {
   cancelled: { label: "Otkazano", color: "default", candidateCanEdit: false },
 };
 
+// Override iznad applicationStatuses po form_type. Trenutno samo prijava_d: tamo
+// "accepted" znači da je kandidat prihvaćen u razredbeni postupak, ne da je upisan
+// (upis se događa kasnije kroz magic link na upis_d), pa "Upisan" tu ne stoji.
+const applicationStatusOverridesByFormType = {
+  prijava_d: {
+    accepted: { label: "Prihvaćeno" },
+  },
+};
+
+// Statusi koji se ne nude/prikazuju za pojedine form_type. "cancelled" nema smisla
+// za prijava_d — otkazivanje prijave na diplomski ide kroz "rejected".
+const hiddenApplicationStatusesByFormType = {
+  prijava_d: ["cancelled"],
+};
+
+// Konfig za jedan status, s primijenjenim form_type override-om ako postoji.
+// formType je opcionalan — bez njega vraća base applicationStatuses ponašanje
+// (upis_pd, ili kad form_type nije poznat na mjestu renderiranja).
+//
+// hasSentEnrollment je eksplicitan flag (iz enrollments.sent_at IS NOT NULL),
+// nikad izveden iz applications.status — baza statusa ostaje "accepted".
+// Generiran-ali-neposlan link se ovdje ne razlikuje od "nema enrollmenta":
+// dok sent_at nije postavljen, status i dalje čita "Prihvaćeno".
+export function getApplicationStatusConfig(status, formType, hasSentEnrollment = false) {
+  const base = applicationStatuses[status] ?? { label: status, color: "default" };
+  const override = formType && applicationStatusOverridesByFormType[formType]?.[status];
+  const config = override ? { ...base, ...override } : base;
+
+  if (formType === "prijava_d" && status === "accepted" && hasSentEnrollment) {
+    return { ...config, label: "Poslan link za upis", color: "info" };
+  }
+  return config;
+}
+
+// Entries (Object.entries oblik) applicationStatuses s primijenjenim override-om i
+// bez statusa skrivenih za taj form_type — za liste gumbi/opcija, ne samo chipove.
+export function getApplicationStatusEntries(formType) {
+  const hidden = (formType && hiddenApplicationStatusesByFormType[formType]) || [];
+  return Object.entries(applicationStatuses)
+    .filter(([key]) => !hidden.includes(key))
+    .map(([key]) => [key, getApplicationStatusConfig(key, formType)]);
+}
+
 // Statuses where admin message modal is shown (sending email to candidate)
 export const statusesWithMessage = ["needs_update"];
 
@@ -61,9 +104,15 @@ export const statusesWithEmail = ["accepted", "rejected"];
 export const enrollmentStatuses = {
   pending: { label: "Čeka upis", color: "warning" },
   submitted: { label: "Upisano", color: "success" },
-  confirmed: { label: "Potvrđeno", color: "info" },
+  in_review: { label: "U obradi", color: "warning" },
+  needs_update: { label: "Potrebne izmjene", color: "error" },
+  confirmed: { label: "Upisan", color: "info" },
   rejected: { label: "Odbijeno", color: "default" },
 };
+
+// Statuses where admin message modal is shown (sending email to candidate) —
+// enrollment equivalent of statusesWithMessage above.
+export const enrollmentStatusesWithMessage = ["needs_update"];
 
 // Prijava je "zaključana" za pristupnika kad je referada preuzela obradu —
 // pristupnik više ne može sam mijenjati podatke ni tražiti edit link.

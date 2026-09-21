@@ -33,15 +33,14 @@ import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import EditIcon from "@mui/icons-material/Edit";
 import LinkIcon from "@mui/icons-material/Link";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
-import { applicationStatuses, getProgramShortCode, studyPrograms, statusesWithMessage } from "@/lib/applications/config";
+import { applicationStatuses, getApplicationStatusConfig, getProgramShortCode, studyPrograms, statusesWithMessage } from "@/lib/applications/config";
 import { permanentDeleteApplications, restoreApplications } from "@/lib/admin/actions";
 import { bulkUpdateApplicationStatus, softDeleteApplication, bulkSoftDeleteApplications } from "@/lib/applications/actions";
-import { createEnrollmentToken, sendEnrollmentInvite } from "@/lib/enrollments/actions";
-import { createClient } from "@/lib/supabase/client";
+import { createEnrollmentToken, sendEnrollmentInvite, resolveUpisDIntake, getSentEnrollmentApplicationIds } from "@/lib/enrollments/actions";
 import styles from "@/app/admin/admin.module.css";
 
-function StatusChip({ status }) {
-  const config = applicationStatuses[status] ?? { label: status, color: "default" };
+function StatusChip({ status, formType, hasSentEnrollment }) {
+  const config = getApplicationStatusConfig(status, formType, hasSentEnrollment);
   return <Chip label={config.label} color={config.color} size="small" sx={{ fontWeight: 600, fontSize: "0.72rem" }} />;
 }
 
@@ -100,28 +99,56 @@ export default function ApplicationsTable({
   // Bulk enrollment link
   const [bulkEnrollmentLoading, setBulkEnrollmentLoading] = useState(false);
   const [bulkEnrollmentResult, setBulkEnrollmentResult] = useState(null);
-  const [upisIntakes, setUpisIntakes] = useState([]);
+  const [resolvedUpisIntake, setResolvedUpisIntake] = useState(null);
+  const [upisIntakeCandidates, setUpisIntakeCandidates] = useState([]);
+  const [upisIntakeError, setUpisIntakeError] = useState(null);
   const [selectedUpisIntakeId, setSelectedUpisIntakeId] = useState("");
   const [bulkEnrollmentModal, setBulkEnrollmentModal] = useState(false);
 
-  // Dohvati upis_d intakee jednom (za Bulk enrollment link)
+  // Nađi upis (diplomski) intake za akademsku godinu ovog prijava_d intakea.
+  // Svi prikazani upisi dijele isti intake (vidi uvjet za gumb ispod), pa je
+  // akademska godina zajednička. Birač se prikazuje samo ako razrješavanje
+  // nije jednoznačno — vidi resolveUpisDIntake.
   useEffect(() => {
+    if (!intake?.academic_year) return;
     let cancelled = false;
-    const supabase = createClient();
-    supabase
-      .from("intakes")
-      .select("id, title, academic_year")
-      .eq("form_type", "upis_d")
-      .eq("is_visible", true)
-      .then(({ data }) => {
-        if (cancelled) return;
-        setUpisIntakes(data || []);
-        if (data?.length === 1) setSelectedUpisIntakeId(data[0].id);
-      });
+    resolveUpisDIntake(intake.academic_year).then((result) => {
+      if (cancelled) return;
+      if (result.intake) {
+        setResolvedUpisIntake(result.intake);
+      } else {
+        setUpisIntakeCandidates(result.candidates || []);
+        setUpisIntakeError(result.error || null);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [intake?.academic_year]);
+
+  // Application id-jevi koji imaju enrollment s poslanim linkom — jedan upit za
+  // cijelu tablicu (ne po retku), za StatusChip override i rang lista filter.
+  const [sentEnrollmentApplicationIds, setSentEnrollmentApplicationIds] = useState(new Set());
+
+  useEffect(() => {
+    if (intake?.form_type !== "prijava_d") {
+      setSentEnrollmentApplicationIds(new Set());
+      return;
+    }
+    const ids = applications.map((a) => a.id);
+    if (ids.length === 0) {
+      setSentEnrollmentApplicationIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    getSentEnrollmentApplicationIds(ids).then((result) => {
+      if (cancelled) return;
+      setSentEnrollmentApplicationIds(new Set(result.applicationIds || []));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [intake?.form_type, applications]);
 
   // Bulk status promjena (active mode)
   const [bulkStatusModal, setBulkStatusModal] = useState(false);
@@ -137,7 +164,11 @@ export default function ApplicationsTable({
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return applications.filter((app) => {
-      if (statusFilter && app.status !== statusFilter) return false;
+      if (statusFilter === "accepted_no_link_sent") {
+        if (app.status !== "accepted" || sentEnrollmentApplicationIds.has(app.id)) return false;
+      } else if (statusFilter && app.status !== statusFilter) {
+        return false;
+      }
       if (programFilter.length > 0 && !programFilter.includes(app.program)) return false;
       if (q) {
         const haystack = [app.first_name, app.last_name, app.oib, app.email, app.application_number].join(" ").toLowerCase();
@@ -145,7 +176,7 @@ export default function ApplicationsTable({
       }
       return true;
     });
-  }, [applications, search, statusFilter, programFilter]);
+  }, [applications, search, statusFilter, programFilter, sentEnrollmentApplicationIds]);
 
   // ─── Bulk selection ────────────────────────────────────
   // U active modu, biraju se samo prijave do kojih admin ima pristup
@@ -218,7 +249,8 @@ export default function ApplicationsTable({
   };
 
   const handleBulkEnrollment = async () => {
-    if (!selectedUpisIntakeId) return;
+    const targetIntakeId = resolvedUpisIntake?.id || selectedUpisIntakeId;
+    if (!targetIntakeId) return;
     setBulkEnrollmentLoading(true);
     setBulkEnrollmentResult(null);
     let success = 0,
@@ -227,19 +259,20 @@ export default function ApplicationsTable({
     for (const id of selected) {
       const app = filtered.find((a) => a.id === id);
       if (!app) continue;
-      const tokenResult = await createEnrollmentToken(id, selectedUpisIntakeId);
+      const tokenResult = await createEnrollmentToken(id, targetIntakeId);
       if (tokenResult.error) {
         failed++;
         continue;
       }
       try {
-        await sendEnrollmentInvite({
+        const inviteResult = await sendEnrollmentInvite({
           token: tokenResult.token,
           email: app.email,
           firstName: app.first_name,
           lastName: app.last_name,
         });
-        success++;
+        if (inviteResult?.error) failed++;
+        else success++;
       } catch {
         failed++;
       }
@@ -357,6 +390,9 @@ export default function ApplicationsTable({
                   {config.label}
                 </MenuItem>
               ))}
+              {intake?.form_type === "prijava_d" && (
+                <MenuItem value="accepted_no_link_sent">Prihvaćeno — link nije poslan</MenuItem>
+              )}
             </Select>
           </FormControl>
         )}
@@ -559,7 +595,7 @@ export default function ApplicationsTable({
                       </TableCell>
                       {!isTrash && (
                         <TableCell>
-                          <StatusChip status={app.status} />
+                          <StatusChip status={app.status} formType={intake?.form_type} hasSentEnrollment={sentEnrollmentApplicationIds.has(app.id)} />
                         </TableCell>
                       )}
                       <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
@@ -682,11 +718,11 @@ export default function ApplicationsTable({
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Svim odabranim kandidatima bit će poslan email s magic linkom za popunjavanje upisa na diplomski studij.
           </Typography>
-          {upisIntakes.length > 1 && (
+          {!resolvedUpisIntake && upisIntakeCandidates.length > 1 && (
             <FormControl fullWidth size="small" sx={{ mb: 2 }}>
               <InputLabel>Upis na diplomski</InputLabel>
               <Select value={selectedUpisIntakeId} label="Upis na diplomski" onChange={(e) => setSelectedUpisIntakeId(e.target.value)}>
-                {upisIntakes.map((i) => (
+                {upisIntakeCandidates.map((i) => (
                   <MenuItem key={i.id} value={i.id}>
                     {i.title} · {i.academic_year}
                   </MenuItem>
@@ -694,9 +730,9 @@ export default function ApplicationsTable({
               </Select>
             </FormControl>
           )}
-          {upisIntakes.length === 0 && (
+          {!resolvedUpisIntake && upisIntakeCandidates.length === 0 && upisIntakeError && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Nema kreiranog "Upis (diplomski)" intakea. Kreirajte ga u Upravljanje upisima.
+              {upisIntakeError}
             </Alert>
           )}
           {bulkEnrollmentResult && (
@@ -720,7 +756,7 @@ export default function ApplicationsTable({
               onClick={handleBulkEnrollment}
               variant="contained"
               color="success"
-              disabled={bulkEnrollmentLoading || !selectedUpisIntakeId}
+              disabled={bulkEnrollmentLoading || !(resolvedUpisIntake?.id || selectedUpisIntakeId)}
               startIcon={bulkEnrollmentLoading ? <CircularProgress size={16} /> : <LinkIcon />}
               sx={{ borderRadius: "100px" }}
             >

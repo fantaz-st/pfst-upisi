@@ -12,7 +12,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import InfoIcon from "@mui/icons-material/Info";
 import { checkApplicationStatus } from "@/lib/applications/actions";
-import { applicationStatuses, getProgramLabel, studyTypes } from "@/lib/applications/config";
+import { getApplicationStatusConfig, getProgramLabel, studyTypes } from "@/lib/applications/config";
 import styles from "./StatusCheckForm.module.css";
 
 export default function StatusCheckForm() {
@@ -33,7 +33,7 @@ export default function StatusCheckForm() {
     setLoading(false);
   };
 
-  const statusConfig = result ? (applicationStatuses[result.status] ?? { label: result.status, color: "default" }) : null;
+  const statusConfig = result ? getApplicationStatusConfig(result.status, result.form_type) : null;
   const programLabel = result ? getProgramLabel(result.program) : null;
   const studyTypeLabel = result ? studyTypes.find((t) => t.value === result.study_type)?.label : null;
 

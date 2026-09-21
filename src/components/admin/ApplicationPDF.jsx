@@ -121,7 +121,7 @@ const enrollmentTypeLabels = {
   4: "Upisujem I. godinu studija kao student u redovitom statusu, ali sam završio/la studij iste razine kao student u redovitom statusu",
 };
 
-export default function ApplicationPDF({ application, programLabel, studyTypeLabel, statusLabel, photoUrl }) {
+export default function ApplicationPDF({ application, programLabel, studyTypeLabel, photoUrl }) {
   Font.register({
     family: "Roboto",
     fonts: [

@@ -75,7 +75,7 @@ export const diplomskiApplicationSchema = z.object({
   address: z.string().min(1, "Obavezno polje"),
   city: z.string().min(1, "Obavezno polje"),
   postal_code: z.string().min(1, "Obavezno polje"),
-  country: z.string().min(1, "Obavezno polje"),
+  citizenship: z.string().min(1, "Obavezno polje"),
   previous_completion_year: z.string().regex(/^\d{4}$/, "Unesite valjanu godinu"),
   consent: z.literal(true, { errorMap: () => ({ message: "Morate prihvatiti uvjete" }) }),
 });

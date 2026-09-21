@@ -5,6 +5,7 @@ import Image from "next/image";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import LockClockIcon from "@mui/icons-material/LockClock";
 import EditApplicationForm from "@/components/application/EditApplicationForm";
+import EditApplicationFormD from "@/components/application/EditApplicationFormD";
 import styles from "./page.module.css";
 
 export default async function EditApplicationPage({ params }) {
@@ -13,7 +14,7 @@ export default async function EditApplicationPage({ params }) {
 
   const { data: tokenData } = await supabase
     .from("application_edit_tokens")
-    .select(`*, applications ( *, intakes ( title, academic_year, slug, study_level ), application_documents ( * ) )`)
+    .select(`*, applications ( *, intakes ( title, academic_year, slug, form_type, diplomski_period_from, diplomski_period_to ), application_documents ( * ) )`)
     .eq("token", token)
     .single();
 
@@ -72,7 +73,11 @@ export default async function EditApplicationPage({ params }) {
             </div>
           </div>
 
-          <EditApplicationForm application={application} token={token} />
+          {application.intakes?.form_type === "prijava_d" ? (
+            <EditApplicationFormD application={application} token={token} />
+          ) : (
+            <EditApplicationForm application={application} token={token} />
+          )}
         </Container>
       </div>
     </div>

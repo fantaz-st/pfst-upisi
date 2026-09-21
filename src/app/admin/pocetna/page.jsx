@@ -8,7 +8,7 @@ import Typography from "@mui/material/Typography";
 import IntakeSelector from "@/components/admin/IntakeSelector";
 import ApplicationsTrendChart from "@/components/admin/ApplicationsTrendChart";
 import ApplicationsByProgramChart from "@/components/admin/ApplicationsByProgramChart";
-import { applicationStatuses, getProgramShortCode } from "@/lib/applications/config";
+import { applicationStatuses, getApplicationStatusConfig, getProgramShortCode } from "@/lib/applications/config";
 import styles from "../admin.module.css";
 import Link from "next/link";
 
@@ -29,7 +29,7 @@ export default async function AdminHomePage({ searchParams }) {
 
   let query = supabase
     .from("applications")
-    .select(`id, application_number, first_name, last_name, email, status, created_at, program, study_type, intake_id, intakes ( id, title, academic_year, slug, study_level )`)
+    .select(`id, application_number, first_name, last_name, email, status, created_at, program, study_type, intake_id, intakes ( id, title, academic_year, slug, study_level, form_type )`)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
@@ -130,10 +130,7 @@ export default async function AdminHomePage({ searchParams }) {
         ) : (
           <Box>
             {recentApps.map((app, index) => {
-              const statusConfig = applicationStatuses[app.status] ?? {
-                label: app.status,
-                color: "default",
-              };
+              const statusConfig = getApplicationStatusConfig(app.status, app.intakes?.form_type);
 
               return (
                 <Link

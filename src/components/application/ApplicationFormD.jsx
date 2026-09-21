@@ -58,7 +58,7 @@ const schema = z.object({
   address: z.string().min(1, "Obavezno polje"),
   city: z.string().min(1, "Obavezno polje"),
   postal_code: z.string().min(1, "Obavezno polje"),
-  country: z.string().min(1, "Obavezno polje"),
+  citizenship: z.string().min(1, "Obavezno polje"),
   previous_completion_year: z.string().regex(/^\d{4}$/, "Unesite valjanu godinu"),
   consent: z.literal(true, { errorMap: () => ({ message: "Morate prihvatiti uvjete" }) }),
 });
@@ -87,7 +87,7 @@ export default function ApplicationFormD({ intake }) {
       first_name: "", last_name: "",
       oib: "", phone: "", email: "",
       birth_date: "", father_name: "",
-      address: "", city: "", postal_code: "", country: "Hrvatska",
+      address: "", city: "", postal_code: "", citizenship: "Hrvatska",
       previous_completion_year: "",
       consent: false,
     },
@@ -172,12 +172,7 @@ export default function ApplicationFormD({ intake }) {
 
     // Tek sad submit — s pre-alociranim ID-om i metadata za već uploadane datoteke.
     // Ako submit padne, orphan datoteke ostaju u storage-u za kasniji cleanup.
-    const result = await submitApplicationD(
-      { ...data, citizenship: data.country },
-      intake.slug,
-      [],
-      { applicationId, documentsMeta }
-    );
+    const result = await submitApplicationD(data, intake.slug, [], { applicationId, documentsMeta });
 
     if (result?.error) {
       setServerError(result.error);
@@ -320,8 +315,8 @@ export default function ApplicationFormD({ intake }) {
             )} />
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Controller name="country" control={control} render={({ field }) => (
-              <TextField {...field} label="Država *" fullWidth error={!!errors.country} helperText={errors.country?.message} />
+            <Controller name="citizenship" control={control} render={({ field }) => (
+              <TextField {...field} label="Država *" fullWidth error={!!errors.citizenship} helperText={errors.citizenship?.message} />
             )} />
           </Grid>
         </Grid>

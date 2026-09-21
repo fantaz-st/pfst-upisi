@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email/send";
+import { emailPotrebneIzmjeneUpis } from "@/lib/email/templates";
 
 const enrollmentSchema = z.object({
   enrollment_type: z
@@ -104,19 +106,83 @@ export async function submitEnrollment(token, formData, photo = null) {
   return { success: true };
 }
 
+// Pronađi upis (diplomski) intake za zadanu akademsku godinu. Ne smije se
+// pogađati program/smjer — upis_d intake nije vezan uz program, samo uz
+// godinu. Vraća { intake } samo kad postoji točno jedan, inače { error } i,
+// za slučaj više pogodaka, { candidates } da referada može ručno odabrati.
+export async function resolveUpisDIntake(academicYear) {
+  if (!academicYear) {
+    return { error: "Nedostaje akademska godina prijave." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("intakes")
+    .select("id, title, academic_year")
+    .eq("form_type", "upis_d")
+    .eq("is_open", true)
+    .eq("academic_year", academicYear);
+
+  if (error) return { error: error.message };
+
+  const intakes = data || [];
+  if (intakes.length === 1) return { intake: intakes[0] };
+  if (intakes.length === 0) {
+    return {
+      error: `Nema otvorenog upisa na diplomski studij za akademsku godinu ${academicYear}. Kreirajte ga u Upravljanje upisima.`,
+    };
+  }
+  return {
+    error: `Pronađeno je više upisa na diplomski studij za akademsku godinu ${academicYear} — odaberite jedan.`,
+    candidates: intakes,
+  };
+}
+
+// Application ids (iz zadanog popisa) koji imaju enrollment s poslanim linkom —
+// jedan upit za cijelu tablicu, ne po retku. Koristi se za StatusChip override i
+// za rang lista filter u ApplicationsTable.
+export async function getSentEnrollmentApplicationIds(applicationIds) {
+  if (!applicationIds || applicationIds.length === 0) return { applicationIds: [] };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("application_id")
+    .in("application_id", applicationIds)
+    .not("sent_at", "is", null);
+
+  if (error) return { error: error.message, applicationIds: [] };
+  return { applicationIds: (data || []).map((r) => r.application_id) };
+}
+
 export async function createEnrollmentToken(applicationId, enrollmentIntakeId) {
   const supabase = await createClient();
+
+  // Zadnja linija obrane: bez obzira odakle je enrollmentIntakeId stigao,
+  // upis se smije voditi isključivo na upis_d intakeu. Vidi bug gdje je
+  // pozivatelj slao id prijava_d intakea i upis je postao nevidljiv u adminu.
+  const { data: targetIntake, error: intakeError } = await supabase
+    .from("intakes")
+    .select("id, form_type")
+    .eq("id", enrollmentIntakeId)
+    .maybeSingle();
+
+  if (intakeError) return { error: intakeError.message };
+  if (!targetIntake) return { error: "Odabrani upis ne postoji." };
+  if (targetIntake.form_type !== "upis_d") {
+    return { error: "Odabrani upis nije upis na diplomski studij." };
+  }
 
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(); // 14 dana
 
   const { data: existing } = await supabase.from("enrollments").select("id, token, status").eq("application_id", applicationId).maybeSingle();
 
-  let token;
   if (existing) {
     // Obnovi token — produljuje rok, ali ne dira status/token_used_at ako je
     // kandidat već predao upis (submitted/confirmed/rejected). Ponovno otvaranje
     // predanog upisa ide isključivo kroz revertEnrollmentToPending — eksplicitnu
-    // akciju referade, ne kao nuspojava ponovnog slanja istog linka.
+    // akciju referade, ne kao nuspojava ponovnog slanja istog linka. sent_at se
+    // ovdje ne dira — isti link, samo produljen rok.
     const updateData = { token_expires_at: expiresAt };
     if (existing.status === "pending") {
       updateData.token_used_at = null;
@@ -125,37 +191,40 @@ export async function createEnrollmentToken(applicationId, enrollmentIntakeId) {
       .from("enrollments")
       .update(updateData)
       .eq("id", existing.id)
-      .select("token")
+      .select("token, token_expires_at, token_used_at")
       .single();
     if (error) return { error: error.message };
-    token = data.token;
-  } else {
-    const { data, error } = await supabase
-      .from("enrollments")
-      .insert({
-        application_id: applicationId,
-        intake_id: enrollmentIntakeId,
-        token_expires_at: expiresAt,
-        status: "pending",
-      })
-      .select("token")
-      .single();
-    if (error) return { error: error.message };
-    token = data.token;
+    return { success: true, token: data.token, tokenExpiresAt: data.token_expires_at, tokenUsedAt: data.token_used_at };
   }
 
-  return { success: true, token };
+  const { data, error } = await supabase
+    .from("enrollments")
+    .insert({
+      application_id: applicationId,
+      intake_id: enrollmentIntakeId,
+      token_expires_at: expiresAt,
+      status: "pending",
+    })
+    .select("token, token_expires_at, token_used_at")
+    .single();
+  if (error) return { error: error.message };
+
+  return { success: true, token: data.token, tokenExpiresAt: data.token_expires_at, tokenUsedAt: data.token_used_at };
 }
 
+// Generiranje linka i slanje emaila su dvije odvojene radnje — sent_at bilježi
+// isključivo uspješno slanje, ne generiranje. Dok je null, "Poslan link za upis"
+// se ne prikazuje nigdje (vidi getApplicationStatusConfig) — link koji je
+// generiran ali nije (uspješno) poslan mora ostati nevidljiv u tom pogledu.
 export async function sendEnrollmentInvite({ token, email, firstName, lastName }) {
-  const { sendEmail } = await import("@/lib/email/send");
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   const enrollmentUrl = `${siteUrl}/upis-diplomski/${token}`;
 
-  await sendEmail({
-    to: email,
-    subject: "Poziv na upis na diplomski studij — PFST",
-    html: `
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Poziv na upis na diplomski studij — PFST",
+      html: `
 <!DOCTYPE html>
 <html lang="hr">
 <head><meta charset="UTF-8"></head>
@@ -198,16 +267,31 @@ export async function sendEnrollmentInvite({ token, email, firstName, lastName }
 </body>
 </html>
     `,
-  });
+    });
+  } catch (emailError) {
+    console.error("Email error:", emailError);
+    return { error: "Greška pri slanju emaila. Pokušajte ponovo." };
+  }
+
+  const sentAt = new Date().toISOString();
+  const supabase = await createClient();
+  const { error: updateError } = await supabase.from("enrollments").update({ sent_at: sentAt }).eq("token", token);
+  if (updateError) {
+    // Email je otišao — ne javljamo grešku adminu jer bi to bilo netočno.
+    // sent_at ostaje nezabilježen do sljedećeg uspješnog slanja.
+    console.error("sent_at update error:", updateError);
+  }
+
+  return { success: true, sentAt };
 }
 
 export async function bulkConfirmEnrollments(enrollmentIds) {
   const supabase = await createClient();
+  // Referada odlučuje iz kojeg statusa potvrđuje — bez ograničenja na "submitted".
   const { error } = await supabase
     .from("enrollments")
     .update({ status: "confirmed" })
-    .in("id", enrollmentIds)
-    .eq("status", "submitted"); // samo submitane možemo potvrditi
+    .in("id", enrollmentIds);
   if (error) return { error: error.message };
   revalidatePath("/admin/upisi-diplomski");
   return { success: true, count: enrollmentIds.length };
@@ -215,11 +299,8 @@ export async function bulkConfirmEnrollments(enrollmentIds) {
 
 export async function confirmEnrollment(enrollmentId) {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("enrollments")
-    .update({ status: "confirmed" })
-    .eq("id", enrollmentId)
-    .eq("status", "submitted"); // samo submitani upis možemo potvrditi
+  // Referada odlučuje iz kojeg statusa potvrđuje — bez ograničenja na "submitted".
+  const { error } = await supabase.from("enrollments").update({ status: "confirmed" }).eq("id", enrollmentId);
   if (error) return { error: error.message };
   revalidatePath("/admin/upisi-diplomski");
   revalidatePath(`/admin/upis/${enrollmentId}`);
@@ -233,6 +314,62 @@ export async function rejectEnrollment(enrollmentId) {
   revalidatePath("/admin/upisi-diplomski");
   revalidatePath(`/admin/upis/${enrollmentId}`);
   return { success: true };
+}
+
+export async function markEnrollmentInReview(enrollmentId) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("enrollments").update({ status: "in_review" }).eq("id", enrollmentId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath(`/admin/upis/${enrollmentId}`);
+  return { success: true };
+}
+
+// "Potrebne izmjene" mora stvarno ponovno otvoriti obrazac kandidatu — briše
+// token_used_at i produljuje token_expires_at (isti 14-dnevni rok kao
+// createEnrollmentToken), tako da postojeći magic link opet radi. submitEnrollment
+// i EnrollmentPage gate isključivo na tim poljima, ne na statusu, pa je ovo dovoljno.
+export async function requestEnrollmentUpdate(enrollmentId, adminMessage) {
+  const supabase = await createClient();
+
+  const { data: enrollment, error: fetchError } = await supabase
+    .from("enrollments")
+    .select("token, applications ( first_name, last_name, email )")
+    .eq("id", enrollmentId)
+    .single();
+
+  if (fetchError || !enrollment) return { error: "Upis nije pronađen." };
+
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(); // 14 dana
+
+  const { error } = await supabase
+    .from("enrollments")
+    .update({ status: "needs_update", token_used_at: null, token_expires_at: expiresAt })
+    .eq("id", enrollmentId);
+
+  if (error) return { error: error.message };
+
+  let emailWarning = null;
+  if (adminMessage && enrollment.applications?.email) {
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+      const magicLink = `${siteUrl}/upis-diplomski/${enrollment.token}`;
+      const template = emailPotrebneIzmjeneUpis({
+        ime: enrollment.applications.first_name,
+        prezime: enrollment.applications.last_name,
+        poruka: adminMessage,
+        magicLink,
+      });
+      await sendEmail({ to: enrollment.applications.email, ...template });
+    } catch (emailError) {
+      console.error("Email error:", emailError);
+      emailWarning = `Status je spremljen, ali email nije poslan: ${emailError.message}`;
+    }
+  }
+
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath(`/admin/upis/${enrollmentId}`);
+  return emailWarning ? { success: true, emailWarning } : { success: true };
 }
 
 export async function revertEnrollmentToPending(enrollmentId) {
