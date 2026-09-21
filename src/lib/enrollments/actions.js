@@ -307,6 +307,21 @@ export async function confirmEnrollment(enrollmentId) {
   return { success: true };
 }
 
+// Potvrda upisa s JMBAG-om — koristi se iz modala u EnrollmentStatusControl.
+// Prazan JMBAG je dopušten (isto kao kod applications.jmbag) — referada ga
+// može dodati naknadno kroz uređivanje upisa.
+export async function confirmEnrollmentWithJmbag(enrollmentId, jmbag) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("enrollments")
+    .update({ jmbag: jmbag?.trim() || null, status: "confirmed" })
+    .eq("id", enrollmentId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath(`/admin/upis/${enrollmentId}`);
+  return { success: true };
+}
+
 export async function rejectEnrollment(enrollmentId) {
   const supabase = await createClient();
   const { error } = await supabase.from("enrollments").update({ status: "rejected" }).eq("id", enrollmentId);

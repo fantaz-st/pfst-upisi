@@ -215,7 +215,7 @@ export default async function EnrollmentDetailPage({ params }) {
         <Grid size={{ xs: 12, md: 4 }}>
           <div className={styles.sectionPaper}>
             <div className={styles.sectionTitle}>Promjena statusa</div>
-            <EnrollmentStatusControl enrollmentId={enrollment.id} currentStatus={enrollment.status} />
+            <EnrollmentStatusControl enrollmentId={enrollment.id} currentStatus={enrollment.status} currentJmbag={enrollment.jmbag} />
           </div>
 
           <div className={styles.sectionPaper}>

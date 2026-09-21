@@ -30,7 +30,10 @@ export default function ApplicationStatusControl({ applicationId, currentStatus,
     setError(null);
     setSuccess(null);
 
-    if (statusKey === "accepted") {
+    if (statusKey === "accepted" && formType !== "prijava_d") {
+      // JMBAG modal samo za upis_pd, gdje prihvaćanje = upis. Za prijava_d
+      // prihvaćanje samo znači da je kandidat pušten u razredbeni postupak —
+      // JMBAG se unosi tek kasnije, kod EnrollmentStatusControl "Upisan".
       setPendingStatus(statusKey);
       setJmbagInput(currentJmbag || "");
       setJmbagModal(true);
