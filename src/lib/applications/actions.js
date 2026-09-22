@@ -6,7 +6,7 @@ import { generateApplicationNumber } from "./applicationNumber";
 import { fullApplicationSchema, personalInfoSchema, diplomskiApplicationSchema } from "./validation";
 import { sendEmail } from "@/lib/email/send";
 import { emailPotvrda, emailPotrebneIzmjene, emailPrihvaceno, emailOdbijeno, emailUObradi } from "@/lib/email/templates";
-import { getProgramLabel, applicationStatuses, isCandidateLocked } from "@/lib/applications/config";
+import { getProgramLabel, applicationStatuses, isCandidateLocked, studyTypes } from "@/lib/applications/config";
 import { revalidatePath } from "next/cache";
 
 export async function submitApplication(formData, slug, force = false, options = {}) {
@@ -527,10 +527,52 @@ export async function submitApplicationD(formData, slug, filesToUpload = [], opt
     father_name,
   } = parsed.data;
 
-  // Provjeri duplikat OIB
-  const { data: existing } = await supabase.from("applications").select("id").eq("oib", oib).eq("intake_id", intake.id).is("deleted_at", null).maybeSingle();
+  // Provjeri duplikat OIB unutar ovog intakea.
+  // Isti OIB smije imati prijavu za ISTI program u OBJE vrste studiranja
+  // (redoviti i izvanredni) — npr. prvo se prijavi kao redoviti, pa naknadno
+  // kao izvanredni za isti studij. Sve ostalo (drugi program, ili ponovna
+  // prijava za već iskorištenu kombinaciju program+vrsta) se blokira.
+  // .maybeSingle() bi ovdje pucao čim kandidat ima i redoviti i izvanredni
+  // prijavu za isti studij, zato dohvaćamo sve retke.
+  const { data: existingRows } = await supabase
+    .from("applications")
+    .select("id, program, study_type")
+    .eq("oib", oib)
+    .eq("intake_id", intake.id)
+    .is("deleted_at", null);
 
-  if (existing) return { error: "Prijava s ovim OIB-om već postoji za ovaj upisni rok." };
+  if (existingRows && existingRows.length > 0) {
+    const isAllowed =
+      existingRows.length === 1 &&
+      existingRows[0].program === program &&
+      existingRows[0].study_type !== study_type;
+
+    if (!isAllowed) {
+      // Grupiraj postojeće prijave po programu, da znamo koje je vrste
+      // studiranja kandidat već iskoristio za svaki studij.
+      const byProgram = new Map();
+      for (const row of existingRows) {
+        if (!byProgram.has(row.program)) byProgram.set(row.program, new Set());
+        byProgram.get(row.program).add(row.study_type);
+      }
+
+      const sentences = [...byProgram.entries()].map(([prog, types]) => {
+        const label = getProgramLabel(prog);
+        const usedTypes = studyTypes.filter((t) => types.has(t.value));
+
+        if (usedTypes.length >= studyTypes.length) {
+          const allTypeLabels = usedTypes.map((t) => t.label.toLowerCase()).join(" i ");
+          return `Već ste prijavili oba načina studiranja (${allTypeLabels}) za studij ${label} i ne možete poslati dodatnu prijavu.`;
+        }
+
+        const usedLabel = usedTypes[0].label.toLowerCase();
+        const remaining = studyTypes.find((t) => !types.has(t.value));
+        return `Već imate poslanu prijavu za ${label} (${usedLabel}). Za isti studij možete se prijaviti još samo kao ${remaining.label.toLowerCase()} student.`;
+      });
+
+      return { error: sentences.join(" ") };
+    }
+  }
 
   const application_number = generateApplicationNumber();
   const { applicationId: preAllocatedId, documentsMeta = [] } = options;

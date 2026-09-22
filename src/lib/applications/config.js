@@ -6,6 +6,7 @@ export const documentTypeLabels = {
   previous_education_certificate: "Svjedodžba / diploma prethodnog obrazovanja",
   grade_transcript: "Prijepis ocjena",
   payment_confirmation: "Uplatnica upisnine",
+  classification_fee_confirmation: "Uplatnica troška razredbenog postupka",
   tuition_payment_confirmation: "Uplatnica školarine",
   occupational_medicine_certificate: "Potvrda medicine rada",
   combined_documents: "Svi dokumenti (jedna datoteka)",
@@ -167,7 +168,7 @@ export function getDiplomskiPreviousStudyOptions(intake) {
 // pfst_current → 3 docs (potvrda o uplati, potvrda o završenom PD, osobna)
 // pfst_previous + other → 5 docs
 export function getDiplomskiRequiredDocuments(previousStudyInstitution) {
-  const base = ["payment_confirmation", "identity_card"];
+  const base = ["classification_fee_confirmation", "identity_card"];
   if (previousStudyInstitution === "pfst_current") {
     return [...base, "previous_education_certificate"];
   }
