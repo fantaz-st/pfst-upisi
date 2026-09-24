@@ -33,13 +33,42 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Typography from "@mui/material/Typography";
-import { getProgramShortCode, enrollmentStatuses, studyPrograms, studyTypes, getStudyTypeLabel } from "@/lib/applications/config";
+import TableSortLabel from "@mui/material/TableSortLabel";
+import { getProgramShortCode, getProgramLabel, enrollmentStatuses, studyPrograms, studyTypes, getStudyTypeLabel } from "@/lib/applications/config";
 import { bulkConfirmEnrollments, deleteEnrollment, restoreEnrollment } from "@/lib/enrollments/actions";
 import styles from "@/app/admin/admin.module.css";
 
 // Enrollments postoje isključivo za upis_d (diplomski) — nema ptjm tu, za
 // razliku od ApplicationsTable-ovog kombiniranog popisa svih studija.
 const diplomskiPrograms = studyPrograms.diplomski;
+
+// Stupci po kojima se tablica može sortirati — tekstualni se uspoređuju
+// preko localeCompare("hr") (č, ć, š, ž na svom mjestu), datumski numerički.
+// Prazne vrijednosti uvijek idu na kraj, bez obzira na smjer sortiranja.
+const sortAccessors = {
+  name: { type: "text", get: (e) => `${e.applications?.first_name ?? ""} ${e.applications?.last_name ?? ""}`.trim() },
+  oib: { type: "text", get: (e) => e.applications?.oib ?? "" },
+  program: { type: "text", get: (e) => getProgramLabel(e.applications?.program) },
+  study_type: { type: "text", get: (e) => getStudyTypeLabel(e.applications?.study_type) },
+  status: { type: "text", get: (e) => enrollmentStatuses[e.status]?.label ?? e.status ?? "" },
+  token_expires_at: { type: "date", get: (e) => e.token_expires_at },
+  submitted_at: { type: "date", get: (e) => e.submitted_at },
+};
+
+function compareEnrollments(a, b, field, direction) {
+  const accessor = sortAccessors[field];
+  if (!accessor) return 0;
+  const va = accessor.get(a);
+  const vb = accessor.get(b);
+  const aEmpty = va === null || va === undefined || va === "";
+  const bEmpty = vb === null || vb === undefined || vb === "";
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1; // prazne vrijednosti na kraj, neovisno o smjeru
+  if (bEmpty) return -1;
+
+  const cmp = accessor.type === "date" ? new Date(va).getTime() - new Date(vb).getTime() : String(va).localeCompare(String(vb), "hr");
+  return direction === "asc" ? cmp : -cmp;
+}
 
 export default function EnrollmentsTable({ enrollments = [], showIntake = false, mode = "active", filterable = false }) {
   const router = useRouter();
@@ -55,6 +84,20 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
   const [statusFilter, setStatusFilter] = useState("");
   const [programFilter, setProgramFilter] = useState([]);
   const [studyTypeFilter, setStudyTypeFilter] = useState("");
+
+  // Sortiranje — klijentski, na vrhu filtriranog popisa. Zadano: najnoviji
+  // predani upisi prvi.
+  const [sortField, setSortField] = useState("submitted_at");
+  const [sortDirection, setSortDirection] = useState("desc");
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!filterable) return enrollments;
@@ -72,12 +115,16 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
     });
   }, [enrollments, filterable, search, statusFilter, programFilter, studyTypeFilter]);
 
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => compareEnrollments(a, b, sortField, sortDirection));
+  }, [filtered, sortField, sortDirection]);
+
   // Broj vidljivih stupaca — za "Nema rezultata" red kad filter ne pogodi ništa.
   const columnCount = (isTrash ? 0 : 1) + 5 + (showIntake ? 1 : 0) + (isTrash ? 1 : 2) + 1;
 
   // Referada odlučuje iz kojeg statusa potvrđuje — bez ograničenja na "submitted",
   // isto kao pojedinačna kontrola statusa (EnrollmentStatusControl).
-  const selectableIds = useMemo(() => filtered.map((e) => e.id), [filtered]);
+  const selectableIds = useMemo(() => sorted.map((e) => e.id), [sorted]);
   const confirmableSelected = selected;
   const allSelected = selectableIds.length > 0 && selected.length === selectableIds.length;
   const someSelected = selected.length > 0;
@@ -271,17 +318,59 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
                   </TableCell>
                 )}
                 <TableCell>#</TableCell>
-                <TableCell>Ime i prezime</TableCell>
-                <TableCell>OIB</TableCell>
-                <TableCell>Studij</TableCell>
+                <TableCell>
+                  <TableSortLabel active={sortField === "name"} direction={sortField === "name" ? sortDirection : "asc"} onClick={() => handleSort("name")}>
+                    Ime i prezime
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel active={sortField === "oib"} direction={sortField === "oib" ? sortDirection : "asc"} onClick={() => handleSort("oib")}>
+                    OIB
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.25 }}>
+                    <TableSortLabel active={sortField === "program"} direction={sortField === "program" ? sortDirection : "asc"} onClick={() => handleSort("program")}>
+                      Studij
+                    </TableSortLabel>
+                    <TableSortLabel
+                      active={sortField === "study_type"}
+                      direction={sortField === "study_type" ? sortDirection : "asc"}
+                      onClick={() => handleSort("study_type")}
+                      sx={{ fontSize: "0.7rem", color: "text.secondary" }}
+                    >
+                      Vrsta studiranja
+                    </TableSortLabel>
+                  </Box>
+                </TableCell>
                 {showIntake && <TableCell>Upis</TableCell>}
-                <TableCell>Status</TableCell>
+                <TableCell>
+                  <TableSortLabel active={sortField === "status"} direction={sortField === "status" ? sortDirection : "asc"} onClick={() => handleSort("status")}>
+                    Status
+                  </TableSortLabel>
+                </TableCell>
                 {isTrash ? (
                   <TableCell>Obrisano</TableCell>
                 ) : (
                   <>
-                    <TableCell>Istječe</TableCell>
-                    <TableCell>Poslano</TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === "token_expires_at"}
+                        direction={sortField === "token_expires_at" ? sortDirection : "asc"}
+                        onClick={() => handleSort("token_expires_at")}
+                      >
+                        Istječe
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === "submitted_at"}
+                        direction={sortField === "submitted_at" ? sortDirection : "asc"}
+                        onClick={() => handleSort("submitted_at")}
+                      >
+                        Poslano
+                      </TableSortLabel>
+                    </TableCell>
                   </>
                 )}
                 <TableCell align="right">Prijava</TableCell>
@@ -295,7 +384,7 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((e, i) => {
+                sorted.map((e, i) => {
                 const app = e.applications;
                 const cfg = enrollmentStatuses[e.status] ?? { label: e.status, color: "default" };
                 const isExpired = e.token_expires_at && new Date(e.token_expires_at) < new Date() && !e.token_used_at;
@@ -351,7 +440,16 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
                           <span className={styles.secondaryText}>{e.token_expires_at ? new Date(e.token_expires_at).toLocaleDateString("hr-HR") : "—"}</span>
                         </TableCell>
                         <TableCell>
-                          <span className={styles.secondaryText}>{e.submitted_at ? new Date(e.submitted_at).toLocaleDateString("hr-HR") : "—"}</span>
+                          {e.submitted_at ? (
+                            <Box>
+                              <span className={styles.secondaryText}>{new Date(e.submitted_at).toLocaleDateString("hr-HR")}</span>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: "block", opacity: 0.75, lineHeight: 1.3 }}>
+                                {new Date(e.submitted_at).toLocaleTimeString("hr-HR")}
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <span className={styles.secondaryText}>—</span>
+                          )}
                         </TableCell>
                       </>
                     )}
