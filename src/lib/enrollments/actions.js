@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendEmail } from "@/lib/email/send";
-import { emailPotrebneIzmjeneUpis } from "@/lib/email/templates";
+import { emailPotrebneIzmjeneUpis, emailUpisZaprimljen, emailUpisPotvrden } from "@/lib/email/templates";
+import { getProgramLabel } from "@/lib/applications/config";
 
 const enrollmentSchema = z.object({
   enrollment_type: z
@@ -52,7 +53,7 @@ export async function submitEnrollment(token, formData, photo = null) {
   // Dohvati enrollment po tokenu
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("enrollments")
-    .select("*, intakes ( id ), applications ( program )")
+    .select("*, intakes ( id, academic_year ), applications ( first_name, last_name, email, program )")
     .eq("token", token)
     .is("token_used_at", null)
     .single();
@@ -103,6 +104,25 @@ export async function submitEnrollment(token, formData, photo = null) {
 
   if (updateError) return { error: updateError.message };
 
+  // Email da je upis zaprimljen — ne smije srušiti upis ako pošiljanje padne,
+  // upis je već spremljen u bazi. Isti obrazac kao updateApplicationStatus:
+  // topla greška se vraća kao emailWarning, ne error.
+  let emailWarning = null;
+  try {
+    const template = emailUpisZaprimljen({
+      ime: enrollment.applications?.first_name,
+      prezime: enrollment.applications?.last_name,
+      studij: getProgramLabel(enrollment.applications?.program),
+      akademskaGodina: enrollment.intakes?.academic_year,
+      coursesS1: parsed.data.selected_courses_s1,
+      coursesS2: parsed.data.selected_courses_s2,
+    });
+    await sendEmail({ to: enrollment.applications?.email, ...template });
+  } catch (emailError) {
+    console.error("Email error:", emailError);
+    emailWarning = `Upis je zaprimljen, ali email nije poslan: ${emailError.message}`;
+  }
+
   // Upload fotografije
   if (photo && enrollment.application_id) {
     const { uploadDocuments } = await import("@/lib/applications/actions");
@@ -110,7 +130,7 @@ export async function submitEnrollment(token, formData, photo = null) {
   }
 
   revalidatePath("/admin/prijave");
-  return { success: true };
+  return emailWarning ? { success: true, emailWarning } : { success: true };
 }
 
 // Pronađi upis (diplomski) intake za zadanu akademsku godinu. Ne smije se
@@ -319,14 +339,37 @@ export async function confirmEnrollment(enrollmentId) {
 // može dodati naknadno kroz uređivanje upisa.
 export async function confirmEnrollmentWithJmbag(enrollmentId, jmbag) {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: enrollment, error } = await supabase
     .from("enrollments")
     .update({ jmbag: jmbag?.trim() || null, status: "confirmed" })
-    .eq("id", enrollmentId);
+    .eq("id", enrollmentId)
+    .select("jmbag, applications ( first_name, last_name, email, program ), intakes ( academic_year )")
+    .single();
   if (error) return { error: error.message };
+
   revalidatePath("/admin/upisi-diplomski");
   revalidatePath(`/admin/upis/${enrollmentId}`);
-  return { success: true };
+
+  // Email da je upis potvrđen — ne smije srušiti potvrdu ako pošiljanje padne,
+  // status je već spremljen u bazi. Isti obrazac kao updateApplicationStatus.
+  let emailWarning = null;
+  if (enrollment.applications?.email) {
+    try {
+      const template = emailUpisPotvrden({
+        ime: enrollment.applications.first_name,
+        prezime: enrollment.applications.last_name,
+        studij: getProgramLabel(enrollment.applications.program),
+        akademskaGodina: enrollment.intakes?.academic_year,
+        jmbag: enrollment.jmbag,
+      });
+      await sendEmail({ to: enrollment.applications.email, ...template });
+    } catch (emailError) {
+      console.error("Email error:", emailError);
+      emailWarning = `Upis je potvrđen, ali email nije poslan: ${emailError.message}`;
+    }
+  }
+
+  return emailWarning ? { success: true, emailWarning } : { success: true };
 }
 
 export async function rejectEnrollment(enrollmentId) {

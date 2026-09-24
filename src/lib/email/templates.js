@@ -380,6 +380,161 @@ export function emailPotrebneIzmjeneUpis({ ime, prezime, poruka, magicLink }) {
   };
 }
 
+export function emailUpisZaprimljen({ ime, prezime, studij, akademskaGodina, coursesS1 = [], coursesS2 = [] }) {
+  const totalEcts = [...coursesS1, ...coursesS2].reduce((sum, c) => sum + (c.credits || 0), 0);
+
+  const renderCourseList = (courses) =>
+    courses.length > 0
+      ? courses.map((c) => `<p style="margin:0 0 6px;font-size:14px;color:#333;">• ${c.name} <span style="color:#888;">(${c.credits} ECTS)</span></p>`).join("")
+      : `<p style="margin:0;font-size:14px;color:#888;">Nema odabranih predmeta.</p>`;
+
+  return {
+    subject: `Upis zaprimljen — ${studij}`,
+    html: `
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#F5F7FA;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td bgcolor="#2E7D32" style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:40px;text-align:center;">
+              <p style="margin:0 0 8px;color:rgba(255,255,255,0.7);font-size:13px;letter-spacing:2px;text-transform:uppercase;">Pomorski fakultet u Splitu</p>
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Upis zaprimljen</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#333;">Poštovani/a <strong>${ime} ${prezime}</strong>,</p>
+              <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+                Obavještavamo Vas da je Vaš obrazac za upis na <strong>${studij}</strong> za akademsku godinu <strong>${akademskaGodina}</strong> uspješno zaprimljen i trenutno se obrađuje u referadi.
+              </p>
+
+              <!-- Izborni predmeti -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA;border-radius:6px;margin-bottom:16px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;">Izborni predmeti — 1. semestar</p>
+                    ${renderCourseList(coursesS1)}
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA;border-radius:6px;margin-bottom:16px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;">Izborni predmeti — 2. semestar</p>
+                    ${renderCourseList(coursesS2)}
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 24px;font-size:15px;color:#333;line-height:1.6;">
+                Ukupno odabrano: <strong>${totalEcts} ECTS</strong>
+              </p>
+
+              <p style="margin:0;font-size:15px;color:#555;line-height:1.6;">
+                O ishodu obrade bit ćete obaviješteni putem e-pošte.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#F5F7FA;padding:24px 40px;border-top:1px solid #E0E0E0;">
+              <p style="margin:0 0 4px;font-size:13px;color:#888;">Pomorski fakultet u Splitu</p>
+              <p style="margin:0;font-size:13px;color:#888;">Ruđera Boškovića 37, 21000 Split</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+  };
+}
+
+export function emailUpisPotvrden({ ime, prezime, studij, akademskaGodina, jmbag }) {
+  return {
+    subject: `Upis potvrđen — ${studij}`,
+    html: `
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#F5F7FA;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:40px;text-align:center;">
+              <p style="margin:0 0 8px;color:rgba(255,255,255,0.7);font-size:13px;letter-spacing:2px;text-transform:uppercase;">Pomorski fakultet u Splitu</p>
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">Upisani ste ✓</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#333;">Poštovani/a <strong>${ime} ${prezime}</strong>,</p>
+              <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">
+                Obavještavamo Vas da je studentska referada pregledala Vaš upis i potvrdila ga.
+              </p>
+              <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
+                Službeno ste upisani na <strong style="color:#2E7D32;">${studij}</strong> u akademskoj godini <strong>${akademskaGodina}</strong>.
+              </p>
+              ${
+                jmbag
+                  ? `
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA;border-radius:6px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <p style="margin:0 0 8px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;">JMBAG</p>
+                    <p style="margin:0;font-size:22px;font-weight:700;color:#0D2B52;font-family:monospace;">${jmbag}</p>
+                  </td>
+                </tr>
+              </table>`
+                  : ""
+              }
+              <p style="margin:0;font-size:15px;color:#333;line-height:1.6;font-weight:600;">
+                Dobrodošli na Pomorski fakultet u Splitu!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#F5F7FA;padding:24px 40px;border-top:1px solid #E0E0E0;">
+              <p style="margin:0 0 4px;font-size:13px;color:#888;">Pomorski fakultet u Splitu</p>
+              <p style="margin:0;font-size:13px;color:#888;">Ruđera Boškovića 37, 21000 Split</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+  };
+}
+
 export function emailUObradi({ ime, prezime, brojPrijave, studij, akademskaGodina }) {
   return {
     subject: `Prijava u obradi — ${brojPrijave}`,
