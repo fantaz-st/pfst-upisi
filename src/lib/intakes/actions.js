@@ -85,8 +85,14 @@ export async function createIntake({
  * id-jevima, ne po intake_id-u (novi redovi dijele isti intake_id, pa brisanje
  * po intake_id-u nakon inserta bi obrisalo i njih). Ako insert ne uspije, stari
  * redovi ostaju netaknuti umjesto da tablica ostane prazna.
+ *
+ * `rows` mogu doći izravno iz baze (npr. učitani pa vraćeni nepromijenjeni)
+ * pa nose svoj `id`/`created_at`. `columns` je eksplicitna lista stvarnih
+ * stupaca za insert (bez id/created_at/intake_id) — insert šalje samo njih,
+ * inače baza dobije stari id natrag i padne na duplicate primary key umjesto
+ * da sama generira novi.
  */
-async function replaceElectiveRows(supabase, table, intakeId, rows) {
+async function replaceElectiveRows(supabase, table, intakeId, rows, columns) {
   if (rows === undefined || rows === null) return { error: null };
 
   const { data: existing, error: selectError } = await supabase
@@ -97,9 +103,12 @@ async function replaceElectiveRows(supabase, table, intakeId, rows) {
   const oldIds = (existing || []).map((r) => r.id);
 
   if (rows.length > 0) {
-    const { error: insertError } = await supabase
-      .from(table)
-      .insert(rows.map((r) => ({ ...r, intake_id: intakeId })));
+    const sanitized = rows.map((r) => {
+      const picked = { intake_id: intakeId };
+      for (const col of columns) picked[col] = r[col];
+      return picked;
+    });
+    const { error: insertError } = await supabase.from(table).insert(sanitized);
     if (insertError) return { error: insertError };
   }
 
@@ -110,6 +119,9 @@ async function replaceElectiveRows(supabase, table, intakeId, rows) {
 
   return { error: null };
 }
+
+const ELECTIVE_COURSE_COLUMNS = ["program", "semester", "name", "instructor", "credits", "sort_order"];
+const ELECTIVE_REQUIREMENT_COLUMNS = ["program", "semester", "min_credits"];
 
 export async function updateIntake({
   id, title, academic_year, slug, study_level, form_type,
@@ -140,10 +152,10 @@ export async function updateIntake({
   // elective_requirements se diraju neovisno jedno o drugom, i samo ako ih je
   // pozivatelj stvarno poslao — vidi replaceElectiveRows.
   if (form_type === "upis_d") {
-    const coursesResult = await replaceElectiveRows(supabase, "elective_courses", id, elective_courses);
+    const coursesResult = await replaceElectiveRows(supabase, "elective_courses", id, elective_courses, ELECTIVE_COURSE_COLUMNS);
     if (coursesResult.error) return { error: coursesResult.error.message };
 
-    const requirementsResult = await replaceElectiveRows(supabase, "elective_requirements", id, elective_requirements);
+    const requirementsResult = await replaceElectiveRows(supabase, "elective_requirements", id, elective_requirements, ELECTIVE_REQUIREMENT_COLUMNS);
     if (requirementsResult.error) return { error: requirementsResult.error.message };
   }
 
