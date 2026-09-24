@@ -77,6 +77,7 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
 
   const program = application?.program;
   const isRedoviti = application?.study_type === "redoviti";
+  const isIzvanredni = application?.study_type === "izvanredni";
 
   const coursesS1 = useMemo(() => courses.filter(c => c.program === program && c.semester === 1), [courses, program]);
   const coursesS2 = useMemo(() => courses.filter(c => c.program === program && c.semester === 2), [courses, program]);
@@ -102,7 +103,7 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
   const handleSubmit = async () => {
     if (!photo) { setError("Molimo dodajte fotografiju."); return; }
     if (!documents.payment_confirmation) { setError("Molimo dodajte uplatnicu upisnine."); return; }
-    if (!documents.tuition_payment_confirmation) { setError("Molimo dodajte uplatnicu školarine."); return; }
+    if (isIzvanredni && !documents.tuition_payment_confirmation) { setError("Molimo dodajte uplatnicu školarine."); return; }
     if (!formData.gender) { setError("Odaberite spol."); return; }
     if (!formData.birth_place) { setError("Unesite mjesto rođenja."); return; }
     if (!formData.marital_status) { setError("Unesite bračno stanje."); return; }
@@ -146,12 +147,14 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
             required
             onFileChange={(file) => setDocuments((prev) => ({ ...prev, payment_confirmation: file }))}
           />
-          <DocumentUpload
-            documentType="tuition_payment_confirmation"
-            label={documentTypeLabels.tuition_payment_confirmation}
-            required
-            onFileChange={(file) => setDocuments((prev) => ({ ...prev, tuition_payment_confirmation: file }))}
-          />
+          {isIzvanredni && (
+            <DocumentUpload
+              documentType="tuition_payment_confirmation"
+              label={documentTypeLabels.tuition_payment_confirmation}
+              required
+              onFileChange={(file) => setDocuments((prev) => ({ ...prev, tuition_payment_confirmation: file }))}
+            />
+          )}
         </Box>
       </Paper>
 

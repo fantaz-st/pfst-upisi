@@ -54,7 +54,7 @@ export async function submitEnrollment(token, formData, photo = null, documents 
   // Dohvati enrollment po tokenu
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("enrollments")
-    .select("*, intakes ( id, academic_year ), applications ( first_name, last_name, email, program )")
+    .select("*, intakes ( id, academic_year ), applications ( first_name, last_name, email, program, study_type )")
     .eq("token", token)
     .is("token_used_at", null)
     .is("deleted_at", null)
@@ -70,6 +70,17 @@ export async function submitEnrollment(token, formData, photo = null, documents 
   if (!parsed.success) {
     console.error("Enrollment validation errors:", parsed.error.flatten().fieldErrors);
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  // Obavezni dokumenti — školarina je obavezna samo za izvanredne, na temelju
+  // study_type iz baze (applications), ne klijentske odluke koji je dokument
+  // poslan. Isto pravilo kao u EnrollmentFormD, ovdje se ne vjeruje klijentu.
+  const isIzvanredni = enrollment.applications?.study_type === "izvanredni";
+  if (!documents?.payment_confirmation) {
+    return { error: "Molimo dodajte uplatnicu upisnine." };
+  }
+  if (isIzvanredni && !documents?.tuition_payment_confirmation) {
+    return { error: "Molimo dodajte uplatnicu školarine." };
   }
 
   // Provjeri minimalne bodove — ukupno za oba semestra zajedno, ne po semestru.
