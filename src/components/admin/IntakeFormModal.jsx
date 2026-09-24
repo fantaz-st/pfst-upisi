@@ -199,7 +199,9 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
           imported.push({ program, semester, name, instructor, credits, sort_order: idx });
         });
 
-        // Pokušaj učitati min bodove iz drugog sheeta ako postoji
+        // Pokušaj učitati min bodove iz drugog sheeta ako postoji. Minimum je
+        // ukupan po programu (semester: 0, isti oblik kao u ElectiveCoursesEditor)
+        // — stupci za 1. i 2. semestar se zbrajaju u jedan ukupni redak.
         if (wb.SheetNames.length > 1) {
           const ws2 = wb.Sheets[wb.SheetNames[1]];
           const rows2 = XLSX.utils.sheet_to_json(ws2, { defval: 0 });
@@ -211,8 +213,7 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
             const s1 = parseInt(row["1. semestar (min)"] || row["semestar_1"] || 0);
             const s2 = parseInt(row["2. semestar (min)"] || row["semestar_2"] || 0);
             if (program) {
-              importedReqs.push({ program, semester: 1, min_credits: s1 });
-              importedReqs.push({ program, semester: 2, min_credits: s2 });
+              importedReqs.push({ program, semester: 0, min_credits: s1 + s2 });
             }
           });
         }
@@ -222,9 +223,18 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
           return;
         }
 
-        setCourses(imported);
-        if (importedReqs.length > 0) setRequirements(importedReqs);
-        alert(`Uvezeno ${imported.length} predmeta${importedReqs.length > 0 ? " i minimalni bodovi" : ""}.`);
+        // Merge, ne replace: predmeti/bodovi programa koji NISU u datoteci
+        // ostaju netaknuti, mijenjaju se samo programi koji se pojave u njoj.
+        const importedProgramSet = new Set(imported.map((c) => c.program));
+        setCourses((prev) => [...prev.filter((c) => !importedProgramSet.has(c.program)), ...imported]);
+
+        if (importedReqs.length > 0) {
+          const importedReqProgramSet = new Set(importedReqs.map((r) => r.program));
+          setRequirements((prev) => [...prev.filter((r) => !importedReqProgramSet.has(r.program)), ...importedReqs]);
+        }
+
+        const programNames = [...importedProgramSet].map((p) => p.toUpperCase()).join(", ");
+        alert(`Uvezeno ${imported.length} predmeta za: ${programNames}. Ostali studiji nisu promijenjeni.`);
       } catch (err) {
         alert("Greška pri čitanju datoteke: " + err.message);
       }

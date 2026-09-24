@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -46,6 +46,17 @@ function EditableCell({ value, onChange, type = "text", width, placeholder }) {
 
 export default function ElectiveCoursesEditor({ courses, requirements, onChange, onRequirementsChange }) {
   const [activeTab, setActiveTab] = useState(PROGRAMS_D[0].value);
+
+  // Migracija starog formata: minimum je nekad bio po semestru (semester 1 /
+  // semester 2), sada je jedan ukupni broj po programu (semester 0). Stare
+  // redove ignoriramo pri čitanju (getReq ispod gleda samo semester === 0) i
+  // uklonimo ih čim ih editor primi, tako da je do idućeg spremanja stanje
+  // već u novom obliku — admin ponovno unosi ukupan minimum po programu.
+  useEffect(() => {
+    if (requirements.some((r) => r.semester !== 0)) {
+      onRequirementsChange(requirements.filter((r) => r.semester === 0));
+    }
+  }, [requirements, onRequirementsChange]);
 
   const programCourses = courses.filter((c) => c.program === activeTab);
   const globalIndexOf = (program, localIdx) => {
@@ -93,11 +104,13 @@ export default function ElectiveCoursesEditor({ courses, requirements, onChange,
     onChange(updated);
   };
 
-  const getReq = (semester) => requirements.find((r) => r.program === activeTab && r.semester === semester)?.min_credits || 0;
+  // Minimum je ukupan po programu (semester = 0), ne po semestru — vidi
+  // migracijski useEffect gore.
+  const getReq = () => requirements.find((r) => r.program === activeTab && r.semester === 0)?.min_credits || 0;
 
-  const setReq = (semester, value) => {
-    const updated = requirements.filter((r) => !(r.program === activeTab && r.semester === semester));
-    onRequirementsChange([...updated, { program: activeTab, semester, min_credits: Number(value) }]);
+  const setReq = (value) => {
+    const updated = requirements.filter((r) => r.program !== activeTab);
+    onRequirementsChange([...updated, { program: activeTab, semester: 0, min_credits: Number(value) }]);
   };
 
   const s1Count = programCourses.filter((c) => c.semester === 1).length;
@@ -125,39 +138,20 @@ export default function ElectiveCoursesEditor({ courses, requirements, onChange,
         })}
       </Tabs>
 
-      {/* Min bodovi */}
+      {/* Min bodova — ukupno za program, predmeti ostaju podijeljeni po semestrima */}
       <Box sx={{ display: "flex", gap: 2, alignItems: "center", px: 1, py: 1.5, background: "var(--blue-pale)", borderRadius: "0 0 8px 8px", mb: 0 }}>
         <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--blue-dark)", mr: 1, whiteSpace: "nowrap" }}>
-          Min. bodova:
+          Minimalni broj ECTS bodova (ukupno):
         </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            1. sem.
-          </Typography>
-          <TextField
-            value={getReq(1)}
-            onChange={(e) => setReq(1, e.target.value)}
-            type="number"
-            size="small"
-            variant="outlined"
-            sx={{ width: 72 }}
-            slotProps={{ input: { sx: { fontSize: "0.82rem", py: 0.4 } } }}
-          />
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            2. sem.
-          </Typography>
-          <TextField
-            value={getReq(2)}
-            onChange={(e) => setReq(2, e.target.value)}
-            type="number"
-            size="small"
-            variant="outlined"
-            sx={{ width: 72 }}
-            slotProps={{ input: { sx: { fontSize: "0.82rem", py: 0.4 } } }}
-          />
-        </Box>
+        <TextField
+          value={getReq()}
+          onChange={(e) => setReq(e.target.value)}
+          type="number"
+          size="small"
+          variant="outlined"
+          sx={{ width: 96 }}
+          slotProps={{ input: { sx: { fontSize: "0.82rem", py: 0.4 } } }}
+        />
         <Box sx={{ ml: "auto", display: "flex", gap: 2 }}>
           <Typography variant="caption" color="text.secondary">
             {s1Count} predmeta u 1. sem. · {s2Count} u 2. sem.

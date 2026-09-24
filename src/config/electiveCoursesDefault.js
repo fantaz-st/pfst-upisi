@@ -42,13 +42,11 @@ export const defaultElectiveCourses = [
   { program: "peit", semester: 2, name: "Daljinsko istraživanje u funkciji održivog razvoja u pomorstvu", instructor: "Dr. sc. M. Krčum, Dr. sc. A. Gudelj, Dr. sc. M. Slišković, Dr. sc. I. Vujović, Dr. sc. Z. Jurić", credits: 4, sort_order: 2 },
 ];
 
+// Minimum je ukupan po programu (semester: 0), ne po semestru — predmeti
+// ostaju podijeljeni po semestrima gore, samo se minimum zbraja.
 export const defaultElectiveRequirements = [
-  { program: "pn",   semester: 1, min_credits: 25 },
-  { program: "pn",   semester: 2, min_credits: 17 },
-  { program: "bs",   semester: 1, min_credits: 13 },
-  { program: "bs",   semester: 2, min_credits: 5  },
-  { program: "pm",   semester: 1, min_credits: 9  },
-  { program: "pm",   semester: 2, min_credits: 15 },
-  { program: "peit", semester: 1, min_credits: 0  },
-  { program: "peit", semester: 2, min_credits: 8  },
+  { program: "pn",   semester: 0, min_credits: 42 }, // 25 + 17
+  { program: "bs",   semester: 0, min_credits: 18 }, // 13 + 5
+  { program: "pm",   semester: 0, min_credits: 24 }, // 9 + 15
+  { program: "peit", semester: 0, min_credits: 8  }, // 0 + 8
 ];

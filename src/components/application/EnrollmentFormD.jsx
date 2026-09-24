@@ -78,11 +78,13 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
   const coursesS1 = useMemo(() => courses.filter(c => c.program === program && c.semester === 1), [courses, program]);
   const coursesS2 = useMemo(() => courses.filter(c => c.program === program && c.semester === 2), [courses, program]);
 
-  const reqS1 = requirements.find(r => r.program === program && r.semester === 1)?.min_credits || 0;
-  const reqS2 = requirements.find(r => r.program === program && r.semester === 2)?.min_credits || 0;
+  // Minimum je ukupan za program (semester = 0), predmeti ostaju podijeljeni
+  // po semestrima — vidi ElectiveCoursesEditor.
+  const reqTotal = requirements.find(r => r.program === program && r.semester === 0)?.min_credits || 0;
 
   const totalS1 = selectedS1.reduce((s, c) => s + c.credits, 0);
   const totalS2 = selectedS2.reduce((s, c) => s + c.credits, 0);
+  const totalCredits = totalS1 + totalS2;
 
   const toggleCourse = (course, semester) => {
     const setter = semester === 1 ? setSelectedS1 : setSelectedS2;
@@ -100,8 +102,7 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
     if (!formData.birth_place) { setError("Unesite mjesto rođenja."); return; }
     if (!formData.marital_status) { setError("Unesite bračno stanje."); return; }
     if (isRedoviti && !formData.enrollment_type) { setError("Odaberite izjavu o upisu."); return; }
-    if (reqS1 > 0 && totalS1 < reqS1) { setError(`Nedovoljno bodova za 1. semestar. Potrebno ${reqS1}, odabrano ${totalS1}.`); return; }
-    if (reqS2 > 0 && totalS2 < reqS2) { setError(`Nedovoljno bodova za 2. semestar. Potrebno ${reqS2}, odabrano ${totalS2}.`); return; }
+    if (reqTotal > 0 && totalCredits < reqTotal) { setError(`Nedovoljno bodova. Potrebno je minimalno ${reqTotal} ECTS, odabrano ${totalCredits}.`); return; }
     if (!consent) { setError("Morate prihvatiti privolu."); return; }
 
     setLoading(true);
@@ -194,16 +195,20 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
         <Paper variant="outlined" className={styles.sectionPaper}>
           <SectionHeader icon={<MenuBookIcon sx={{ fontSize: 18 }} />} title="Izborni predmeti" />
 
+          {/* Ukupan zbroj bodova iz oba semestra naspram jednog zajedničkog minimuma */}
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
+            <Chip
+              label={`Ukupno: ${totalCredits} / min. ${reqTotal} bodova`}
+              size="small"
+              color={totalCredits >= reqTotal ? "success" : "default"}
+              sx={{ fontWeight: 600 }}
+            />
+          </Box>
+
           {coursesS1.length > 0 && (
             <>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+              <Box sx={{ mb: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)" }}>1. semestar</Typography>
-                <Chip
-                  label={`${totalS1} / min. ${reqS1} bodova`}
-                  size="small"
-                  color={totalS1 >= reqS1 ? "success" : "default"}
-                  sx={{ fontWeight: 600 }}
-                />
               </Box>
               {coursesS1.map(course => (
                 <FormControlLabel
@@ -226,14 +231,8 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
 
           {coursesS2.length > 0 && (
             <>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+              <Box sx={{ mb: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--gray-700)" }}>2. semestar</Typography>
-                <Chip
-                  label={`${totalS2} / min. ${reqS2} bodova`}
-                  size="small"
-                  color={totalS2 >= reqS2 ? "success" : "default"}
-                  sx={{ fontWeight: 600 }}
-                />
               </Box>
               {coursesS2.map(course => (
                 <FormControlLabel

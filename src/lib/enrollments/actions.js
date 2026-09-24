@@ -69,15 +69,22 @@ export async function submitEnrollment(token, formData, photo = null) {
     return { error: "Podaci nisu valjani.", fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  // Provjeri minimalne bodove
-  const { data: requirements } = await supabase.from("elective_requirements").select("*").eq("intake_id", enrollment.intakes.id).eq("program", enrollment.applications.program);
+  // Provjeri minimalne bodove — ukupno za oba semestra zajedno, ne po semestru.
+  // Semester = 0 je jedini važeći oblik retka; eventualni stari redovi sa
+  // semester 1/2 (prije migracije na ukupni minimum) se ignoriraju.
+  const { data: requirements } = await supabase
+    .from("elective_requirements")
+    .select("*")
+    .eq("intake_id", enrollment.intakes.id)
+    .eq("program", enrollment.applications.program)
+    .eq("semester", 0);
 
-  for (const req of requirements || []) {
-    const courses = req.semester === 1 ? parsed.data.selected_courses_s1 : parsed.data.selected_courses_s2;
-    const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0);
-    if (totalCredits < req.min_credits) {
+  const minCredits = requirements?.[0]?.min_credits || 0;
+  if (minCredits > 0) {
+    const totalCredits = [...parsed.data.selected_courses_s1, ...parsed.data.selected_courses_s2].reduce((sum, c) => sum + c.credits, 0);
+    if (totalCredits < minCredits) {
       return {
-        error: `Nedovoljno bodova za ${req.semester}. semestar. Potrebno minimalno ${req.min_credits}, odabrano ${totalCredits}.`,
+        error: `Nedovoljno bodova. Potrebno je minimalno ${minCredits} ECTS, odabrano ${totalCredits}.`,
       };
     }
   }
