@@ -142,6 +142,10 @@ export const studyTypes = [
   { value: "izvanredni", label: "Izvanredni" },
 ];
 
+export function getStudyTypeLabel(value) {
+  return studyTypes.find((t) => t.value === value)?.label || value || "";
+}
+
 export function getProgramLabel(value) {
   const allPrograms = [...studyPrograms.prijediplomski, ...studyPrograms.diplomski];
   const program = allPrograms.find((p) => p.value === value);

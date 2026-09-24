@@ -33,7 +33,7 @@ import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import EditIcon from "@mui/icons-material/Edit";
 import LinkIcon from "@mui/icons-material/Link";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
-import { applicationStatuses, getApplicationStatusConfig, getProgramShortCode, studyPrograms, statusesWithMessage } from "@/lib/applications/config";
+import { applicationStatuses, getApplicationStatusConfig, getProgramShortCode, getStudyTypeLabel, studyPrograms, statusesWithMessage } from "@/lib/applications/config";
 import { permanentDeleteApplications, restoreApplications } from "@/lib/admin/actions";
 import { bulkUpdateApplicationStatus, softDeleteApplication, bulkSoftDeleteApplications } from "@/lib/applications/actions";
 import { createEnrollmentToken, sendEnrollmentInvite, resolveUpisDIntake, getSentEnrollmentApplicationIds } from "@/lib/enrollments/actions";
@@ -390,9 +390,7 @@ export default function ApplicationsTable({
                   {config.label}
                 </MenuItem>
               ))}
-              {intake?.form_type === "prijava_d" && (
-                <MenuItem value="accepted_no_link_sent">Prihvaćeno — link nije poslan</MenuItem>
-              )}
+              {intake?.form_type === "prijava_d" && <MenuItem value="accepted_no_link_sent">Prihvaćeno — link nije poslan</MenuItem>}
             </Select>
           </FormControl>
         )}
@@ -536,6 +534,7 @@ export default function ApplicationsTable({
                 <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>OIB</TableCell>
                 <TableCell sx={{ display: { xs: "none", lg: "table-cell" } }}>Email</TableCell>
                 <TableCell>Studij</TableCell>
+                <TableCell>Status studija</TableCell>
                 <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>Vrsta upisa</TableCell>
                 <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>Ak. godina</TableCell>
                 {!isTrash && <TableCell>Status</TableCell>}
@@ -586,6 +585,11 @@ export default function ApplicationsTable({
                           size="small"
                           sx={{ fontWeight: 700, fontSize: "0.7rem", background: "var(--blue-pale)", color: "var(--blue-dark)" }}
                         />
+                        {app.study_type && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                            {getStudyTypeLabel(app.study_type)}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell sx={{ display: { xs: "none", md: "table-cell" } }}>
                         <span className={styles.secondaryText}>{app.intakes?.title ?? "—"}</span>

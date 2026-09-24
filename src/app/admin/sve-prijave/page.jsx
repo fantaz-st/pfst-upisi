@@ -12,7 +12,7 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
-import { getApplicationStatusConfig, getProgramShortCode } from "@/lib/applications/config";
+import { getApplicationStatusConfig, getProgramShortCode, getStudyTypeLabel } from "@/lib/applications/config";
 import ApplicationFilters from "@/components/admin/ApplicationFilters";
 
 export const metadata = {
@@ -140,6 +140,11 @@ export default async function AllApplicationsPage({ searchParams }) {
                   </TableCell>
                   <TableCell>
                     <Chip label={getProgramShortCode(app.program)} size="small" sx={{ fontWeight: 700, fontSize: "0.7rem" }} />
+                    {app.study_type && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                        {getStudyTypeLabel(app.study_type)}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">{app.intakes?.title ?? "—"}</Typography>
