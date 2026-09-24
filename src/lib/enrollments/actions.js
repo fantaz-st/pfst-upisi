@@ -39,6 +39,7 @@ export async function getEnrollmentByToken(token) {
     `,
     )
     .eq("token", token)
+    .is("deleted_at", null)
     .single();
 
   if (error || !data) return null;
@@ -56,6 +57,7 @@ export async function submitEnrollment(token, formData, photo = null) {
     .select("*, intakes ( id, academic_year ), applications ( first_name, last_name, email, program )")
     .eq("token", token)
     .is("token_used_at", null)
+    .is("deleted_at", null)
     .single();
 
   if (enrollmentError || !enrollment) return { error: "Nevažeći ili istekli link." };
@@ -176,7 +178,8 @@ export async function getSentEnrollmentApplicationIds(applicationIds) {
     .from("enrollments")
     .select("application_id")
     .in("application_id", applicationIds)
-    .not("sent_at", "is", null);
+    .not("sent_at", "is", null)
+    .is("deleted_at", null);
 
   if (error) return { error: error.message, applicationIds: [] };
   return { applicationIds: (data || []).map((r) => r.application_id) };
@@ -457,10 +460,23 @@ export async function addEnrollmentNote(enrollmentId, note, adminId) {
   return { success: true };
 }
 
+// Soft delete — isti obrazac kao applications.deleted_at. Redak ostaje u bazi
+// (izborni predmeti, JMBAG, token) i pojavljuje se u /admin/otpad dok se ne
+// vrati kroz restoreEnrollment.
 export async function deleteEnrollment(enrollmentId) {
   const supabase = await createClient();
-  const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
+  const { error } = await supabase.from("enrollments").update({ deleted_at: new Date().toISOString() }).eq("id", enrollmentId);
   if (error) return { error: error.message };
+  revalidatePath("/admin/upisi-diplomski");
+  revalidatePath("/admin/otpad");
+  return { success: true };
+}
+
+export async function restoreEnrollment(enrollmentId) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("enrollments").update({ deleted_at: null }).eq("id", enrollmentId);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/otpad");
   revalidatePath("/admin/upisi-diplomski");
   return { success: true };
 }

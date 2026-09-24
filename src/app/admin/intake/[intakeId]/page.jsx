@@ -48,6 +48,7 @@ export default async function IntakePage({ params }) {
         applications ( id, first_name, last_name, oib, email, program, study_type )
       `)
       .eq("intake_id", intakeId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     enrollments = enr ?? [];
   } else {
@@ -77,7 +78,7 @@ export default async function IntakePage({ params }) {
       </div>
 
       {isUpisD ? (
-        <EnrollmentsTable enrollments={enrollments} />
+        <EnrollmentsTable enrollments={enrollments} filterable />
       ) : (
         <ApplicationsTable applications={applications} mode="active" intake={intake} />
       )}

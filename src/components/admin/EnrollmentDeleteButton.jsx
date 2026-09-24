@@ -44,7 +44,7 @@ export default function EnrollmentDeleteButton({ enrollmentId, candidateName, re
             </Alert>
           )}
           <Typography variant="body2" color="text.secondary">
-            Upis kandidata {candidateName} bit će trajno obrisan. Prijava kandidata ostaje netaknuta.
+            Upis kandidata {candidateName} bit će premješten u otpad — može se vratiti kasnije. Prijava kandidata ostaje netaknuta.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

@@ -27,6 +27,7 @@ export default async function UpisIDiplomskiPage() {
       applications ( id, intake_id, first_name, last_name, oib, email, program, study_type ),
       intakes ( title, academic_year )
     `)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   // Filtriraj po dodijeljenom intakeu (prijava kandidata mora biti u intakeu admina)

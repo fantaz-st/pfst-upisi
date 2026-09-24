@@ -17,6 +17,7 @@ export async function GET(request, { params }) {
       intakes ( title, academic_year )`,
     )
     .eq("id", id)
+    .is("deleted_at", null)
     .single();
 
   if (error || !enrollment) {

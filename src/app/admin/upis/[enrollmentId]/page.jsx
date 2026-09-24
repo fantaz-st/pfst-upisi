@@ -31,6 +31,7 @@ export default async function EnrollmentDetailPage({ params }) {
       enrollment_notes ( * )`,
     )
     .eq("id", enrollmentId)
+    .is("deleted_at", null)
     .single();
 
   if (error || !enrollment) notFound();

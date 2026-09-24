@@ -104,7 +104,7 @@ export const statusesWithEmail = ["accepted", "rejected"];
 
 export const enrollmentStatuses = {
   pending: { label: "Čeka upis", color: "warning" },
-  submitted: { label: "Upisano", color: "success" },
+  submitted: { label: "Zaprimljeno", color: "success" },
   in_review: { label: "U obradi", color: "warning" },
   needs_update: { label: "Potrebne izmjene", color: "error" },
   confirmed: { label: "Upisan", color: "info" },

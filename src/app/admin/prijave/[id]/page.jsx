@@ -39,6 +39,7 @@ export default async function ApplicationDetailPage({ params, searchParams }) {
       .from("enrollments")
       .select("token, token_expires_at, token_used_at, sent_at, intake_id, status")
       .eq("application_id", application.id)
+      .is("deleted_at", null)
       .maybeSingle();
     enrollment = enrollmentData;
   }
