@@ -33,7 +33,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Typography from "@mui/material/Typography";
-import { getProgramShortCode, enrollmentStatuses, studyPrograms } from "@/lib/applications/config";
+import { getProgramShortCode, enrollmentStatuses, studyPrograms, studyTypes, getStudyTypeLabel } from "@/lib/applications/config";
 import { bulkConfirmEnrollments, deleteEnrollment, restoreEnrollment } from "@/lib/enrollments/actions";
 import styles from "@/app/admin/admin.module.css";
 
@@ -54,6 +54,7 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [programFilter, setProgramFilter] = useState([]);
+  const [studyTypeFilter, setStudyTypeFilter] = useState("");
 
   const filtered = useMemo(() => {
     if (!filterable) return enrollments;
@@ -62,13 +63,14 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
       const app = e.applications;
       if (statusFilter && e.status !== statusFilter) return false;
       if (programFilter.length > 0 && !programFilter.includes(app?.program)) return false;
+      if (studyTypeFilter && app?.study_type !== studyTypeFilter) return false;
       if (q) {
         const haystack = [app?.first_name, app?.last_name, app?.oib].join(" ").toLowerCase();
         if (!haystack.includes(q)) return false;
       }
       return true;
     });
-  }, [enrollments, filterable, search, statusFilter, programFilter]);
+  }, [enrollments, filterable, search, statusFilter, programFilter, studyTypeFilter]);
 
   // Broj vidljivih stupaca — za "Nema rezultata" red kad filter ne pogodi ništa.
   const columnCount = (isTrash ? 0 : 1) + 5 + (showIntake ? 1 : 0) + (isTrash ? 1 : 2) + 1;
@@ -204,6 +206,18 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
             </Select>
           </FormControl>
 
+          <FormControl size="small" sx={{ minWidth: { xs: "48%", sm: 160 }, flex: { xs: 1, sm: "unset" } }}>
+            <InputLabel>Vrsta studiranja</InputLabel>
+            <Select value={studyTypeFilter} label="Vrsta studiranja" onChange={(e) => setStudyTypeFilter(e.target.value)} sx={{ borderRadius: 2, background: "white" }}>
+              <MenuItem value="">Sve</MenuItem>
+              {studyTypes.map((t) => (
+                <MenuItem key={t.value} value={t.value}>
+                  {t.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
 
           <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
@@ -307,6 +321,11 @@ export default function EnrollmentsTable({ enrollments = [], showIntake = false,
                         size="small"
                         sx={{ fontWeight: 700, fontSize: "0.7rem", background: "var(--blue-pale)", color: "var(--blue-dark)" }}
                       />
+                      {app?.study_type && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                          {getStudyTypeLabel(app.study_type)}
+                        </Typography>
+                      )}
                     </TableCell>
                     {showIntake && (
                       <TableCell>
