@@ -15,6 +15,7 @@ import EnrollmentStatusControl from "@/components/admin/EnrollmentStatusControl"
 import EnrollmentLinkButton from "@/components/admin/EnrollmentLinkButton";
 import EnrollmentNotes from "@/components/admin/EnrollmentNotes";
 import EnrollmentDeleteButton from "@/components/admin/EnrollmentDeleteButton";
+import DocumentsList from "@/components/admin/DocumentsList";
 import { canAccessIntake } from "@/lib/admin/permissions";
 import styles from "../../admin.module.css";
 
@@ -51,6 +52,9 @@ export default async function EnrollmentDetailPage({ params }) {
   const isExpired = enrollment.token_expires_at && new Date(enrollment.token_expires_at) < new Date() && !enrollment.token_used_at;
   const programLabel = getProgramLabel(application?.program);
   const studyTypeLabel = studyTypes.find((t) => t.value === application?.study_type)?.label || application?.study_type;
+
+  // Dokumenti bez fotografije — fotografija već ima svoju sekciju (ApplicantPhoto).
+  const otherDocs = application?.application_documents?.filter((d) => d.document_type !== "photo") ?? [];
 
   const coursesS1 = enrollment.selected_courses_s1 ?? [];
   const coursesS2 = enrollment.selected_courses_s2 ?? [];
@@ -179,6 +183,12 @@ export default async function EnrollmentDetailPage({ params }) {
             <div className={styles.sectionTitle}>Podaci o studiju</div>
             <InfoRow label="Studij" value={programLabel} />
             <InfoRow label="Vrsta studiranja" value={studyTypeLabel} />
+          </div>
+
+          {/* Dokumenti */}
+          <div className={styles.sectionPaper}>
+            <div className={styles.sectionTitle}>Dokumenti</div>
+            <DocumentsList documents={otherDocs} />
           </div>
 
           {/* Roditelji — samo ako postoje podaci */}

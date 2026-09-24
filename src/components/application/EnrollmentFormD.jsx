@@ -25,9 +25,11 @@ import HomeIcon from "@mui/icons-material/Home";
 import FamilyRestroomIcon from "@mui/icons-material/FamilyRestroom";
 import SchoolIcon from "@mui/icons-material/School";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
-import { enrollmentTypeOptions } from "@/lib/applications/config";
+import FolderIcon from "@mui/icons-material/Folder";
+import { enrollmentTypeOptions, documentTypeLabels } from "@/lib/applications/config";
 import { submitEnrollment } from "@/lib/enrollments/actions";
 import PhotoUpload from "@/components/application/PhotoUpload";
+import DocumentUpload from "@/components/application/DocumentUpload";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import styles from "./ApplicationForm.module.css";
 
@@ -54,6 +56,7 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
   const [error, setError] = useState(null);
   const [consent, setConsent] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [documents, setDocuments] = useState({ payment_confirmation: null, tuition_payment_confirmation: null });
 
   const [formData, setFormData] = useState({
     gender: "",
@@ -98,6 +101,8 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
 
   const handleSubmit = async () => {
     if (!photo) { setError("Molimo dodajte fotografiju."); return; }
+    if (!documents.payment_confirmation) { setError("Molimo dodajte uplatnicu upisnine."); return; }
+    if (!documents.tuition_payment_confirmation) { setError("Molimo dodajte uplatnicu školarine."); return; }
     if (!formData.gender) { setError("Odaberite spol."); return; }
     if (!formData.birth_place) { setError("Unesite mjesto rođenja."); return; }
     if (!formData.marital_status) { setError("Unesite bračno stanje."); return; }
@@ -113,7 +118,7 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
       selected_courses_s1: selectedS1,
       selected_courses_s2: selectedS2,
       consent: true,
-    }, photo);
+    }, photo, documents);
 
     if (result.error) {
       setError(result.error);
@@ -129,6 +134,25 @@ export default function EnrollmentFormD({ token, enrollment, application, intake
       <Paper variant="outlined" className={styles.sectionPaper}>
         <SectionHeader icon={<CameraAltIcon sx={{ fontSize: 18 }} />} title="Fotografija" />
         <PhotoUpload onPhotoChange={setPhoto} />
+      </Paper>
+
+      {/* Dokumenti */}
+      <Paper variant="outlined" className={styles.sectionPaper}>
+        <SectionHeader icon={<FolderIcon sx={{ fontSize: 18 }} />} title="Dokumenti" />
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <DocumentUpload
+            documentType="payment_confirmation"
+            label={documentTypeLabels.payment_confirmation}
+            required
+            onFileChange={(file) => setDocuments((prev) => ({ ...prev, payment_confirmation: file }))}
+          />
+          <DocumentUpload
+            documentType="tuition_payment_confirmation"
+            label={documentTypeLabels.tuition_payment_confirmation}
+            required
+            onFileChange={(file) => setDocuments((prev) => ({ ...prev, tuition_payment_confirmation: file }))}
+          />
+        </Box>
       </Paper>
 
       {/* Info box */}

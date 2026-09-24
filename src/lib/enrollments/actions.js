@@ -48,7 +48,7 @@ export async function getEnrollmentByToken(token) {
   return data;
 }
 
-export async function submitEnrollment(token, formData, photo = null) {
+export async function submitEnrollment(token, formData, photo = null, documents = {}) {
   const supabase = createAdminClient();
 
   // Dohvati enrollment po tokenu
@@ -125,10 +125,16 @@ export async function submitEnrollment(token, formData, photo = null) {
     emailWarning = `Upis je zaprimljen, ali email nije poslan: ${emailError.message}`;
   }
 
-  // Upload fotografije
-  if (photo && enrollment.application_id) {
+  // Upload fotografije i dokumenata (uplatnice) — jedan uploadDocuments poziv,
+  // isti obrazac kao dosad za fotografiju.
+  const filesToUpload = [];
+  if (photo) filesToUpload.push({ documentType: "photo", file: photo });
+  for (const [documentType, file] of Object.entries(documents)) {
+    if (file) filesToUpload.push({ documentType, file });
+  }
+  if (filesToUpload.length > 0 && enrollment.application_id) {
     const { uploadDocuments } = await import("@/lib/applications/actions");
-    await uploadDocuments(enrollment.application_id, [{ documentType: "photo", file: photo }]);
+    await uploadDocuments(enrollment.application_id, filesToUpload);
   }
 
   revalidatePath("/admin/prijave");
