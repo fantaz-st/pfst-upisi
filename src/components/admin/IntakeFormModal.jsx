@@ -76,10 +76,17 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
   // Izborni predmeti
   const [courses, setCourses] = useState([]);
   const [requirements, setRequirements] = useState([]);
+  // false dok se postojeći podaci (edit + upis_d) učitavaju ili ako je
+  // učitavanje propalo — dok je false, handleSubmit ne šalje courses/
+  // requirements u updateIntake (šalje undefined), pa spremanje ne može
+  // slučajno obrisati podatke koje nismo uspjeli pročitati. Vidi
+  // replaceElectiveRows u src/lib/intakes/actions.js.
+  const [electivesLoaded, setElectivesLoaded] = useState(false);
   useEffect(() => {
     if (!open) return;
     setError(null);
     setSlugManual(false);
+    let cancelled = false;
 
     if (isEdit) {
       setForm({
@@ -95,10 +102,23 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
       });
 
       if (intake.form_type === "upis_d") {
+        setCourses([]);
+        setRequirements([]);
+        setElectivesLoaded(false);
         Promise.all([getElectiveCourses(intake.id), getElectiveRequirements(intake.id)]).then(([c, r]) => {
-          setCourses(c);
-          setRequirements(r);
+          if (cancelled) return;
+          if (c.error || r.error) {
+            setError("Greška pri učitavanju izbornih predmeta. Postojeći podaci nisu prikazani — spremanje neće mijenjati izborne predmete dok ponovno ne otvorite ovaj obrazac.");
+            return;
+          }
+          setCourses(c.data);
+          setRequirements(r.data);
+          setElectivesLoaded(true);
         });
+      } else {
+        setCourses([]);
+        setRequirements([]);
+        setElectivesLoaded(true);
       }
     } else {
       setForm({
@@ -115,6 +135,7 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
       setSelectedAdmins([]);
       setCourses([]);
       setRequirements([]);
+      setElectivesLoaded(true);
     }
 
     async function loadAdmins() {
@@ -129,6 +150,10 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
       setLoadingAdmins(false);
     }
     loadAdmins();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, intake]);
 
   const handleFieldChange = (field, value) => {
@@ -214,8 +239,11 @@ export default function IntakeFormModal({ open, onClose, intake = null }) {
     const payload = {
       ...form,
       adminIds: selectedAdmins,
-      elective_courses: form.form_type === "upis_d" ? courses : [],
-      elective_requirements: form.form_type === "upis_d" ? requirements : [],
+      // undefined dok elective podaci nisu (uspješno) učitani — updateIntake
+      // tada tablice uopće ne dira, umjesto da spremi "prazno" kao stvarnu
+      // vrijednost. Vidi electivesLoaded gore.
+      elective_courses: electivesLoaded ? courses : undefined,
+      elective_requirements: electivesLoaded ? requirements : undefined,
     };
     const result = isEdit ? await updateIntake({ id: intake.id, ...payload }) : await createIntake(payload);
 

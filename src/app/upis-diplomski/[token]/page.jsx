@@ -27,10 +27,12 @@ export default async function EnrollmentPage({ params }) {
   let courses = [];
   let requirements = [];
   if (enrollment.intake_id) {
-    [courses, requirements] = await Promise.all([
+    const [coursesResult, requirementsResult] = await Promise.all([
       getElectiveCourses(enrollment.intake_id),
       getElectiveRequirements(enrollment.intake_id),
     ]);
+    courses = coursesResult.data;
+    requirements = requirementsResult.data;
   }
 
   return (

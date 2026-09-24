@@ -72,6 +72,45 @@ export async function createIntake({
   return { success: true, intake };
 }
 
+/**
+ * Zamijeni sve redove tablice `table` za dani intake novim setom `rows`.
+ *
+ * `rows === undefined || rows === null` znači "pozivatelj nije poslao ove
+ * podatke" (npr. modal ih još nije učitao) — tablica se uopće ne dira, stari
+ * redovi ostaju netaknuti. Prazan niz `[]` je i dalje tretiran kao namjerna
+ * naredba "obriši sve", ali je poziv na pozivatelju da tu razliku pravi.
+ *
+ * Redoslijed je bitan: prvo se snimi id-jevi postojećih (starih) redova, pa
+ * se umetnu novi, pa se tek onda obrišu stari — po njihovim snimljenim
+ * id-jevima, ne po intake_id-u (novi redovi dijele isti intake_id, pa brisanje
+ * po intake_id-u nakon inserta bi obrisalo i njih). Ako insert ne uspije, stari
+ * redovi ostaju netaknuti umjesto da tablica ostane prazna.
+ */
+async function replaceElectiveRows(supabase, table, intakeId, rows) {
+  if (rows === undefined || rows === null) return { error: null };
+
+  const { data: existing, error: selectError } = await supabase
+    .from(table)
+    .select("id")
+    .eq("intake_id", intakeId);
+  if (selectError) return { error: selectError };
+  const oldIds = (existing || []).map((r) => r.id);
+
+  if (rows.length > 0) {
+    const { error: insertError } = await supabase
+      .from(table)
+      .insert(rows.map((r) => ({ ...r, intake_id: intakeId })));
+    if (insertError) return { error: insertError };
+  }
+
+  if (oldIds.length > 0) {
+    const { error: deleteError } = await supabase.from(table).delete().in("id", oldIds);
+    if (deleteError) return { error: deleteError };
+  }
+
+  return { error: null };
+}
+
 export async function updateIntake({
   id, title, academic_year, slug, study_level, form_type,
   short_description, sort_order, adminIds,
@@ -97,19 +136,15 @@ export async function updateIntake({
     if (adminError) return { error: adminError.message };
   }
 
-  // Refresh izborni predmeti (samo za upis_d)
+  // Refresh izborni predmeti (samo za upis_d). elective_courses i
+  // elective_requirements se diraju neovisno jedno o drugom, i samo ako ih je
+  // pozivatelj stvarno poslao — vidi replaceElectiveRows.
   if (form_type === "upis_d") {
-    await supabase.from("elective_courses").delete().eq("intake_id", id);
-    await supabase.from("elective_requirements").delete().eq("intake_id", id);
+    const coursesResult = await replaceElectiveRows(supabase, "elective_courses", id, elective_courses);
+    if (coursesResult.error) return { error: coursesResult.error.message };
 
-    if (elective_courses?.length > 0) {
-      await supabase.from("elective_courses")
-        .insert(elective_courses.map(c => ({ ...c, intake_id: id })));
-    }
-    if (elective_requirements?.length > 0) {
-      await supabase.from("elective_requirements")
-        .insert(elective_requirements.map(r => ({ ...r, intake_id: id })));
-    }
+    const requirementsResult = await replaceElectiveRows(supabase, "elective_requirements", id, elective_requirements);
+    if (requirementsResult.error) return { error: requirementsResult.error.message };
   }
 
   revalidatePath("/admin/upisi");
@@ -134,25 +169,29 @@ export async function deleteIntake(id) {
   return { success: true };
 }
 
+// Vraćaju { data, error } — pozivatelji koji podatke koriste samo za prikaz
+// mogu se osloniti na `data || []`, ali IntakeFormModal mora znati kad je
+// učitavanje stvarno propalo (da spremanje ne pošalje "prazno" kao da je to
+// namjerna vrijednost — vidi replaceElectiveRows u updateIntake).
 export async function getElectiveCourses(intakeId) {
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("elective_courses")
     .select("*")
     .eq("intake_id", intakeId)
     .order("program")
     .order("semester")
     .order("sort_order");
-  return data || [];
+  return { data: data || [], error };
 }
 
 export async function getElectiveRequirements(intakeId) {
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("elective_requirements")
     .select("*")
     .eq("intake_id", intakeId);
-  return data || [];
+  return { data: data || [], error };
 }
 
 /* ─────────────────────────────────────────────────────────────
